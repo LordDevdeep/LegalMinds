@@ -85,3 +85,42 @@ export interface AnalyzeError {
 }
 
 export type ApiResponse = AnalyzeResponse | AnalyzeError;
+
+/* ── Legal Notice types ── */
+
+export interface NoticeParty {
+  name: string;
+  address: string;
+}
+
+export interface LegalNoticeContent {
+  date: string;
+  sender: NoticeParty;
+  recipient: NoticeParty;
+  subject_line: string;
+  under_reference: string;
+  facts_paragraphs: string[];
+  grievance: string;
+  demand: string;
+  compliance_period: string;
+  consequences: string;
+  closing_statement: string;
+}
+
+export interface LegalNoticeRequest {
+  sender: NoticeParty;
+  recipient: NoticeParty;
+  analysis: LegalAnalysis;
+}
+
+export interface GenerateNoticeResponse {
+  success: true;
+  data: LegalNoticeContent;
+}
+
+export interface GenerateNoticeError {
+  success: false;
+  error: string;
+}
+
+export type NoticeApiResponse = GenerateNoticeResponse | GenerateNoticeError;

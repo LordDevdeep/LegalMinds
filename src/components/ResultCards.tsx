@@ -1,7 +1,10 @@
 "use client";
 
-import type { LegalAnalysis } from "@/lib/types";
+import { useState } from "react";
+import type { LegalAnalysis, NoticeParty } from "@/lib/types";
 import { downloadLegalNoticePdf } from "@/lib/generatePdf";
+import { downloadLegalNoticeDocument } from "@/lib/generateNoticePdf";
+import NoticeModal from "./NoticeModal";
 import {
   ScaleIcon,
   BookIcon,
@@ -17,9 +20,34 @@ interface Props {
 }
 
 export default function ResultCards({ data, onClarify }: Props) {
+  const [showNoticeModal, setShowNoticeModal] = useState(false);
+  const [noticeLoading, setNoticeLoading] = useState(false);
+
   const hasClarifications =
     data.clarifying_questions && data.clarifying_questions.length > 0;
   const hasMissingInfo = data.missing_info && data.missing_info.length > 0;
+
+  async function handleGenerateNotice(sender: NoticeParty, recipient: NoticeParty) {
+    setNoticeLoading(true);
+    try {
+      const res = await fetch("/api/generate-notice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sender, recipient, analysis: data }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        downloadLegalNoticeDocument(json.data);
+        setShowNoticeModal(false);
+      } else {
+        alert(json.error || "Failed to generate legal notice.");
+      }
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setNoticeLoading(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -306,10 +334,10 @@ export default function ResultCards({ data, onClarify }: Props) {
         </p>
       </div>
 
-      {/* Download as PDF */}
-      <div className="mt-4 flex justify-center animate-slide-up stagger-15">
+      {/* Action buttons */}
+      <div className="mt-4 flex flex-wrap justify-center gap-3 animate-slide-up stagger-15">
         <button
-          onClick={() => downloadLegalNoticePdf(data)}
+          onClick={() => setShowNoticeModal(true)}
           className="
             flex items-center gap-2.5 px-6 py-3 rounded-xl
             bg-gold-500 hover:bg-gold-400
@@ -320,13 +348,41 @@ export default function ResultCards({ data, onClarify }: Props) {
           "
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <polyline points="10 9 9 9 8 9" />
+          </svg>
+          Generate Legal Notice
+        </button>
+        <button
+          onClick={() => downloadLegalNoticePdf(data)}
+          className="
+            flex items-center gap-2.5 px-6 py-3 rounded-xl
+            bg-white/[0.04] hover:bg-white/[0.08]
+            border border-white/[0.06] hover:border-white/[0.1]
+            text-ivory/60 hover:text-ivory font-semibold text-sm tracking-wide
+            transition-all duration-200
+            cursor-pointer
+          "
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
             <polyline points="7 10 12 15 17 10" />
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
-          Download as PDF
+          Download Analysis PDF
         </button>
       </div>
+
+      {/* Notice Modal */}
+      <NoticeModal
+        open={showNoticeModal}
+        onClose={() => setShowNoticeModal(false)}
+        onGenerate={handleGenerateNotice}
+        loading={noticeLoading}
+      />
     </div>
   );
 }
