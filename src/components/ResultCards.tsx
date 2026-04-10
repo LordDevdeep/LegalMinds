@@ -1,6 +1,7 @@
 "use client";
 
 import type { LegalAnalysis } from "@/lib/types";
+import { downloadLegalNoticePdf } from "@/lib/generatePdf";
 import {
   ScaleIcon,
   BookIcon,
@@ -303,6 +304,28 @@ export default function ResultCards({ data, onClarify }: Props) {
           constitute legal advice. Consult a qualified lawyer for your specific
           situation.
         </p>
+      </div>
+
+      {/* Download as PDF */}
+      <div className="mt-4 flex justify-center animate-slide-up stagger-15">
+        <button
+          onClick={() => downloadLegalNoticePdf(data)}
+          className="
+            flex items-center gap-2.5 px-6 py-3 rounded-xl
+            bg-gold-500 hover:bg-gold-400
+            text-midnight font-semibold text-sm tracking-wide
+            transition-all duration-200
+            shadow-lg shadow-gold-500/20 hover:shadow-gold-400/30
+            cursor-pointer
+          "
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Download as PDF
+        </button>
       </div>
     </div>
   );
