@@ -6,6 +6,10 @@ export const metadata: Metadata = {
   description:
     "Get structured legal guidance on Indian law. Analyze your legal situation with AI-powered insights covering applicable laws, penalties, and recommended actions.",
   keywords: ["Indian law", "legal analysis", "AI legal advisor", "legal guidance"],
+  icons: {
+    icon: "/favicon.png",
+    apple: "/logo-icon.png",
+  },
 };
 
 export default function RootLayout({
