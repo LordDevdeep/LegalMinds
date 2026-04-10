@@ -3,7 +3,8 @@
 import { useState, useRef } from "react";
 import Link from "next/link";
 import type { LegalAnalysis, ApiResponse } from "@/lib/types";
-import { ScaleIcon, ArrowRightIcon, LoaderIcon } from "@/components/Icons";
+import Image from "next/image";
+import { ArrowRightIcon, LoaderIcon } from "@/components/Icons";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
 import ResultCards from "@/components/ResultCards";
 
@@ -84,7 +85,7 @@ export default function AnalyzerPage() {
       {/* Nav */}
       <nav className="relative z-10 flex items-center justify-between px-6 md:px-12 py-5 border-b border-white/[0.04]">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <ScaleIcon className="w-5 h-5 text-gold-400 group-hover:text-gold-500 transition-colors" />
+          <Image src="/logo.png" alt="LegalMinds Logo" width={24} height={24} />
           <span className="font-display text-lg text-ivory group-hover:text-gold-400 transition-colors">
             LegalMinds
           </span>

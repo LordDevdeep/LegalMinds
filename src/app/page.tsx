@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ScaleIcon, ArrowRightIcon, SparkleIcon } from "@/components/Icons";
+import Image from "next/image";
+import { ArrowRightIcon, SparkleIcon } from "@/components/Icons";
 
 export default function HomePage() {
   return (
@@ -15,7 +16,7 @@ export default function HomePage() {
       {/* Nav */}
       <nav className="relative z-10 flex items-center justify-between px-6 md:px-12 py-5">
         <div className="flex items-center gap-2.5">
-          <ScaleIcon className="w-6 h-6 text-gold-400" />
+          <Image src="/logo.png" alt="LegalMinds Logo" width={28} height={28} />
           <span className="font-display text-xl text-ivory">LegalMinds</span>
         </div>
         <Link
