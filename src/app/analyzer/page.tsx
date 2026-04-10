@@ -85,10 +85,7 @@ export default function AnalyzerPage() {
       {/* Nav */}
       <nav className="relative z-10 flex items-center justify-between px-6 md:px-12 py-5 border-b border-white/[0.04]">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <Image src="/logo.png" alt="LegalMinds Logo" width={24} height={24} />
-          <span className="font-display text-lg text-ivory group-hover:text-gold-400 transition-colors">
-            LegalMinds
-          </span>
+          <Image src="/logo.png" alt="LegalMinds Logo" width={160} height={60} className="h-8 w-auto" />
         </Link>
         <span className="text-xs text-ivory/25 hidden sm:block">
           AI Legal Analysis — Indian Law
