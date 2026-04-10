@@ -88,15 +88,30 @@ export type ApiResponse = AnalyzeResponse | AnalyzeError;
 
 /* ── Legal Notice types ── */
 
-export interface NoticeParty {
-  name: string;
-  address: string;
+export type Gender = "male" | "female" | "other";
+export type NoticeRole = "lawyer" | "individual";
+
+export interface NoticeDetails {
+  role: NoticeRole;
+  senderName: string;
+  senderAddress: string;
+  senderGender: Gender;
+  recipientName: string;
+  recipientAddress: string;
+  recipientGender: Gender;
+  noticeDate: string;
+  incidentDate: string;
+  incidentLocation: string;
+  compensationAmount: string;
+  specificDemand: string;
 }
 
 export interface LegalNoticeContent {
   date: string;
-  sender: NoticeParty;
-  recipient: NoticeParty;
+  senderName: string;
+  senderAddress: string;
+  recipientName: string;
+  recipientAddress: string;
   subject_line: string;
   under_reference: string;
   facts_paragraphs: string[];
@@ -107,10 +122,10 @@ export interface LegalNoticeContent {
   closing_statement: string;
 }
 
-export interface LegalNoticeRequest {
-  sender: NoticeParty;
-  recipient: NoticeParty;
-  analysis: LegalAnalysis;
+export interface CompensationSuggestion {
+  min: string;
+  max: string;
+  reasoning: string;
 }
 
 export interface GenerateNoticeResponse {
@@ -124,3 +139,15 @@ export interface GenerateNoticeError {
 }
 
 export type NoticeApiResponse = GenerateNoticeResponse | GenerateNoticeError;
+
+export interface CompensationResponse {
+  success: true;
+  data: CompensationSuggestion;
+}
+
+export interface CompensationError {
+  success: false;
+  error: string;
+}
+
+export type CompensationApiResponse = CompensationResponse | CompensationError;

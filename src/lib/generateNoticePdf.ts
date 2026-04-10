@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf";
 import type { LegalNoticeContent } from "./types";
 
-const PAGE_W = 210; // A4 width mm
+const PAGE_W = 210;
 const MARGIN = 20;
 const CONTENT_W = PAGE_W - MARGIN * 2;
 const LINE_H = 6;
@@ -12,8 +12,6 @@ const LINE_H = 6;
 export function downloadLegalNoticeDocument(notice: LegalNoticeContent) {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
   let y = MARGIN;
-
-  /* ── helpers ── */
 
   function ensureSpace(needed: number) {
     if (y + needed > 275) {
@@ -33,8 +31,6 @@ export function downloadLegalNoticeDocument(notice: LegalNoticeContent) {
     }
   }
 
-  /* ── build the PDF ── */
-
   doc.setTextColor(30, 30, 30);
 
   // ─── Date (top-right) ───
@@ -48,8 +44,8 @@ export function downloadLegalNoticeDocument(notice: LegalNoticeContent) {
   doc.setFontSize(11);
   doc.text("To,", MARGIN, y);
   y += LINE_H;
-  writeLines(notice.recipient.name, MARGIN, CONTENT_W, "bold");
-  writeLines(notice.recipient.address, MARGIN, CONTENT_W, "normal", 10);
+  writeLines(notice.recipientName, MARGIN, CONTENT_W, "bold");
+  writeLines(notice.recipientAddress, MARGIN, CONTENT_W, "normal", 10);
   y += LINE_H;
 
   // ─── From (Sender) ───
@@ -57,8 +53,8 @@ export function downloadLegalNoticeDocument(notice: LegalNoticeContent) {
   doc.setFontSize(11);
   doc.text("From,", MARGIN, y);
   y += LINE_H;
-  writeLines(notice.sender.name, MARGIN, CONTENT_W, "bold");
-  writeLines(notice.sender.address, MARGIN, CONTENT_W, "normal", 10);
+  writeLines(notice.senderName, MARGIN, CONTENT_W, "bold");
+  writeLines(notice.senderAddress, MARGIN, CONTENT_W, "normal", 10);
   y += LINE_H;
 
   // ─── Subject ───
@@ -79,7 +75,6 @@ export function downloadLegalNoticeDocument(notice: LegalNoticeContent) {
   doc.setFontSize(16);
   doc.text("LEGAL NOTICE", PAGE_W / 2, y, { align: "center" });
   y += 2;
-  // Gold underline
   doc.setDrawColor(200, 170, 50);
   doc.setLineWidth(0.6);
   const headingW = doc.getTextWidth("LEGAL NOTICE");
@@ -91,8 +86,12 @@ export function downloadLegalNoticeDocument(notice: LegalNoticeContent) {
     doc.setFont("helvetica", "italic");
     doc.setFontSize(10);
     doc.setTextColor(60, 60, 60);
-    doc.text(notice.under_reference, PAGE_W / 2, y, { align: "center" });
-    y += LINE_H + 2;
+    const refLines = doc.splitTextToSize(notice.under_reference, CONTENT_W - 20);
+    for (const line of refLines) {
+      doc.text(line, PAGE_W / 2, y, { align: "center" });
+      y += LINE_H;
+    }
+    y += 2;
   }
 
   y += 4;
@@ -115,12 +114,10 @@ export function downloadLegalNoticeDocument(notice: LegalNoticeContent) {
 
     doc.setFont("helvetica", "normal");
     const paraLines = doc.splitTextToSize(notice.facts_paragraphs[i], CONTENT_W - numW);
-    // First line aligned with number
     if (paraLines.length > 0) {
       doc.text(paraLines[0], MARGIN + numW, y);
       y += LINE_H;
     }
-    // Remaining lines at full indent
     for (let j = 1; j < paraLines.length; j++) {
       ensureSpace(LINE_H);
       doc.text(paraLines[j], MARGIN + numW, y);
@@ -174,9 +171,9 @@ export function downloadLegalNoticeDocument(notice: LegalNoticeContent) {
   doc.line(sigX, y, sigX + 55, y);
   y += LINE_H;
   doc.setFont("helvetica", "bold");
-  doc.text(notice.sender.name, sigX, y);
+  doc.text(notice.senderName, sigX, y);
 
-  // ─── Disclaimer footer on every page ───
+  // ─── Footer on every page ───
   const pageCount = doc.getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
@@ -194,7 +191,6 @@ export function downloadLegalNoticeDocument(notice: LegalNoticeContent) {
     );
   }
 
-  // ─── Save ───
   const dateStr = new Date().toISOString().split("T")[0];
   doc.save(`LegalNotice_${dateStr}.pdf`);
 }

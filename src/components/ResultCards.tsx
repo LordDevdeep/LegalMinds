@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { LegalAnalysis, NoticeParty } from "@/lib/types";
+import type { LegalAnalysis, NoticeDetails } from "@/lib/types";
 import { downloadLegalNoticePdf } from "@/lib/generatePdf";
 import { downloadLegalNoticeDocument } from "@/lib/generateNoticePdf";
 import NoticeModal from "./NoticeModal";
@@ -27,13 +27,13 @@ export default function ResultCards({ data, onClarify }: Props) {
     data.clarifying_questions && data.clarifying_questions.length > 0;
   const hasMissingInfo = data.missing_info && data.missing_info.length > 0;
 
-  async function handleGenerateNotice(sender: NoticeParty, recipient: NoticeParty) {
+  async function handleGenerateNotice(details: NoticeDetails) {
     setNoticeLoading(true);
     try {
       const res = await fetch("/api/generate-notice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sender, recipient, analysis: data }),
+        body: JSON.stringify({ details, analysis: data }),
       });
       const json = await res.json();
       if (json.success) {
@@ -382,6 +382,7 @@ export default function ResultCards({ data, onClarify }: Props) {
         onClose={() => setShowNoticeModal(false)}
         onGenerate={handleGenerateNotice}
         loading={noticeLoading}
+        analysis={data}
       />
     </div>
   );

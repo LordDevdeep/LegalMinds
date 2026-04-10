@@ -1,28 +1,54 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import type { NoticeParty } from "@/lib/types";
+import type { NoticeDetails, Gender, NoticeRole, LegalAnalysis, CompensationSuggestion } from "@/lib/types";
 import { LoaderIcon } from "./Icons";
 
 interface NoticeModalProps {
   open: boolean;
   onClose: () => void;
-  onGenerate: (sender: NoticeParty, recipient: NoticeParty) => void;
+  onGenerate: (details: NoticeDetails) => void;
   loading: boolean;
+  analysis: LegalAnalysis;
 }
 
-export default function NoticeModal({ open, onClose, onGenerate, loading }: NoticeModalProps) {
+function todayStr() {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+}
+
+export default function NoticeModal({ open, onClose, onGenerate, loading, analysis }: NoticeModalProps) {
+  // Role
+  const [role, setRole] = useState<NoticeRole>("individual");
+
+  // Sender
   const [senderName, setSenderName] = useState("");
   const [senderAddress, setSenderAddress] = useState("");
+  const [senderGender, setSenderGender] = useState<Gender>("male");
+
+  // Recipient
   const [recipientName, setRecipientName] = useState("");
   const [recipientAddress, setRecipientAddress] = useState("");
+  const [recipientGender, setRecipientGender] = useState<Gender>("male");
+
+  // Notice details
+  const [noticeDate, setNoticeDate] = useState(todayStr());
+  const [incidentDate, setIncidentDate] = useState("");
+  const [incidentLocation, setIncidentLocation] = useState("");
+
+  // Compensation & demand
+  const [compensationAmount, setCompensationAmount] = useState("");
+  const [specificDemand, setSpecificDemand] = useState("");
+
+  // AI suggestion
+  const [suggestion, setSuggestion] = useState<CompensationSuggestion | null>(null);
+  const [suggestionLoading, setSuggestionLoading] = useState(false);
+
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (open) {
-      setTimeout(() => firstInputRef.current?.focus(), 100);
-    }
+    if (open) setTimeout(() => firstInputRef.current?.focus(), 100);
   }, [open]);
 
   useEffect(() => {
@@ -37,23 +63,56 @@ export default function NoticeModal({ open, onClose, onGenerate, loading }: Noti
 
   if (!open) return null;
 
+  async function handleSuggestCompensation() {
+    setSuggestionLoading(true);
+    try {
+      const res = await fetch("/api/suggest-compensation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ analysis }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setSuggestion(json.data);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setSuggestionLoading(false);
+    }
+  }
+
   function handleSubmit() {
     const newErrors: Record<string, boolean> = {};
     if (!senderName.trim()) newErrors.senderName = true;
     if (!senderAddress.trim()) newErrors.senderAddress = true;
     if (!recipientName.trim()) newErrors.recipientName = true;
     if (!recipientAddress.trim()) newErrors.recipientAddress = true;
+    if (!noticeDate.trim()) newErrors.noticeDate = true;
+    if (!incidentDate.trim()) newErrors.incidentDate = true;
+    if (!incidentLocation.trim()) newErrors.incidentLocation = true;
+    if (!specificDemand.trim()) newErrors.specificDemand = true;
 
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
 
-    onGenerate(
-      { name: senderName.trim(), address: senderAddress.trim() },
-      { name: recipientName.trim(), address: recipientAddress.trim() }
-    );
+    onGenerate({
+      role,
+      senderName: senderName.trim(),
+      senderAddress: senderAddress.trim(),
+      senderGender,
+      recipientName: recipientName.trim(),
+      recipientAddress: recipientAddress.trim(),
+      recipientGender,
+      noticeDate: noticeDate.trim(),
+      incidentDate: incidentDate.trim(),
+      incidentLocation: incidentLocation.trim(),
+      compensationAmount: compensationAmount.trim() || "as deemed appropriate by the Hon'ble Court",
+      specificDemand: specificDemand.trim(),
+    });
   }
 
-  const inputClass = (field: string) => `
+  const inputCls = (field: string) => `
     w-full rounded-lg bg-midnight/60 border
     ${errors[field] ? "border-legal-red/50" : "border-white/[0.06] hover:border-white/[0.1]"}
     px-4 py-2.5 text-sm text-ivory/90 placeholder:text-ivory/25
@@ -61,23 +120,63 @@ export default function NoticeModal({ open, onClose, onGenerate, loading }: Noti
     disabled:opacity-50
   `;
 
+  const selectCls = (field: string) => `
+    w-full rounded-lg bg-midnight/60 border
+    ${errors[field] ? "border-legal-red/50" : "border-white/[0.06] hover:border-white/[0.1]"}
+    px-4 py-2.5 text-sm text-ivory/90
+    transition-all duration-200 outline-none focus:border-gold-500/40
+    disabled:opacity-50 appearance-none cursor-pointer
+  `;
+
+  const labelCls = "text-xs text-ivory/40 mb-1 block";
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm px-4 pt-[8vh] overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm px-4 pt-[4vh] overflow-y-auto"
       onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}
     >
-      <div className="w-full max-w-lg rounded-xl bg-ink border border-white/[0.06] p-6 shadow-2xl animate-scale-in mb-10">
+      <div className="w-full max-w-xl rounded-xl bg-ink border border-white/[0.06] p-6 shadow-2xl animate-scale-in mb-10">
         {/* Header */}
         <h2 className="font-display text-xl text-ivory mb-1">Generate Legal Notice</h2>
-        <p className="text-xs text-ivory/40 mb-6">
-          Enter the sender and recipient details for the legal notice.
+        <p className="text-xs text-ivory/40 mb-5">
+          Fill in all details below. The AI will draft a formal, court-ready legal notice.
         </p>
 
-        {/* Sender Section */}
+        {/* ── Role ── */}
         <div className="mb-5">
-          <p className="text-sm font-semibold text-gold-400 mb-3">Sender Details (Your Client / You)</p>
-          <div className="space-y-3">
-            <div>
+          <p className="text-sm font-semibold text-gold-400 mb-3">Who is sending this notice?</p>
+          <div className="flex gap-3">
+            {([
+              { value: "individual" as NoticeRole, label: "As an Individual (self)" },
+              { value: "lawyer" as NoticeRole, label: "As a Lawyer (on behalf of client)" },
+            ]).map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setRole(opt.value)}
+                disabled={loading}
+                className={`
+                  flex-1 px-4 py-2.5 rounded-lg text-sm text-center transition-all duration-200 cursor-pointer border
+                  ${role === opt.value
+                    ? "bg-gold-500/15 border-gold-500/30 text-gold-400 font-semibold"
+                    : "bg-white/[0.02] border-white/[0.06] text-ivory/50 hover:border-white/[0.1]"
+                  }
+                `}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Sender ── */}
+        <div className="mb-5">
+          <p className="text-sm font-semibold text-gold-400 mb-3">
+            {role === "lawyer" ? "Client Details (Sender)" : "Your Details (Sender)"}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <label className={labelCls}>Full Name *</label>
               <input
                 ref={firstInputRef}
                 type="text"
@@ -85,54 +184,170 @@ export default function NoticeModal({ open, onClose, onGenerate, loading }: Noti
                 value={senderName}
                 onChange={(e) => { setSenderName(e.target.value); setErrors((p) => ({ ...p, senderName: false })); }}
                 disabled={loading}
-                className={inputClass("senderName")}
+                className={inputCls("senderName")}
               />
-              {errors.senderName && <p className="text-[11px] text-legal-red mt-1">Name is required</p>}
+              {errors.senderName && <p className="text-[11px] text-legal-red mt-1">Required</p>}
             </div>
-            <div>
+            <div className="sm:col-span-2">
+              <label className={labelCls}>Full Address *</label>
               <textarea
                 rows={2}
-                placeholder="Full Address (including city, state, PIN)"
+                placeholder="Address (city, state, PIN)"
                 value={senderAddress}
                 onChange={(e) => { setSenderAddress(e.target.value); setErrors((p) => ({ ...p, senderAddress: false })); }}
                 disabled={loading}
-                className={inputClass("senderAddress") + " resize-none"}
+                className={inputCls("senderAddress") + " resize-none"}
               />
-              {errors.senderAddress && <p className="text-[11px] text-legal-red mt-1">Address is required</p>}
+              {errors.senderAddress && <p className="text-[11px] text-legal-red mt-1">Required</p>}
+            </div>
+            <div>
+              <label className={labelCls}>Gender</label>
+              <select value={senderGender} onChange={(e) => setSenderGender(e.target.value as Gender)} disabled={loading} className={selectCls("senderGender")}>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
             </div>
           </div>
         </div>
 
-        {/* Recipient Section */}
-        <div className="mb-6">
+        {/* ── Recipient ── */}
+        <div className="mb-5">
           <p className="text-sm font-semibold text-gold-400 mb-3">Recipient Details (Noticee)</p>
-          <div className="space-y-3">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <label className={labelCls}>Full Name *</label>
               <input
                 type="text"
                 placeholder="Full Name"
                 value={recipientName}
                 onChange={(e) => { setRecipientName(e.target.value); setErrors((p) => ({ ...p, recipientName: false })); }}
                 disabled={loading}
-                className={inputClass("recipientName")}
+                className={inputCls("recipientName")}
               />
-              {errors.recipientName && <p className="text-[11px] text-legal-red mt-1">Name is required</p>}
+              {errors.recipientName && <p className="text-[11px] text-legal-red mt-1">Required</p>}
             </div>
-            <div>
+            <div className="sm:col-span-2">
+              <label className={labelCls}>Full Address *</label>
               <textarea
                 rows={2}
-                placeholder="Full Address (including city, state, PIN)"
+                placeholder="Address (city, state, PIN)"
                 value={recipientAddress}
                 onChange={(e) => { setRecipientAddress(e.target.value); setErrors((p) => ({ ...p, recipientAddress: false })); }}
                 disabled={loading}
-                className={inputClass("recipientAddress") + " resize-none"}
+                className={inputCls("recipientAddress") + " resize-none"}
               />
-              {errors.recipientAddress && <p className="text-[11px] text-legal-red mt-1">Address is required</p>}
+              {errors.recipientAddress && <p className="text-[11px] text-legal-red mt-1">Required</p>}
+            </div>
+            <div>
+              <label className={labelCls}>Gender</label>
+              <select value={recipientGender} onChange={(e) => setRecipientGender(e.target.value as Gender)} disabled={loading} className={selectCls("recipientGender")}>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
             </div>
           </div>
         </div>
 
-        {/* Actions */}
+        {/* ── Notice Details ── */}
+        <div className="mb-5">
+          <p className="text-sm font-semibold text-gold-400 mb-3">Notice & Incident Details</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>Notice Date *</label>
+              <input
+                type="text"
+                placeholder="DD/MM/YYYY"
+                value={noticeDate}
+                onChange={(e) => { setNoticeDate(e.target.value); setErrors((p) => ({ ...p, noticeDate: false })); }}
+                disabled={loading}
+                className={inputCls("noticeDate")}
+              />
+              {errors.noticeDate && <p className="text-[11px] text-legal-red mt-1">Required</p>}
+            </div>
+            <div>
+              <label className={labelCls}>Incident Date *</label>
+              <input
+                type="text"
+                placeholder="DD/MM/YYYY"
+                value={incidentDate}
+                onChange={(e) => { setIncidentDate(e.target.value); setErrors((p) => ({ ...p, incidentDate: false })); }}
+                disabled={loading}
+                className={inputCls("incidentDate")}
+              />
+              {errors.incidentDate && <p className="text-[11px] text-legal-red mt-1">Required</p>}
+            </div>
+            <div className="sm:col-span-2">
+              <label className={labelCls}>Incident Location *</label>
+              <input
+                type="text"
+                placeholder="City / Place where the incident occurred"
+                value={incidentLocation}
+                onChange={(e) => { setIncidentLocation(e.target.value); setErrors((p) => ({ ...p, incidentLocation: false })); }}
+                disabled={loading}
+                className={inputCls("incidentLocation")}
+              />
+              {errors.incidentLocation && <p className="text-[11px] text-legal-red mt-1">Required</p>}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Compensation & Demand ── */}
+        <div className="mb-6">
+          <p className="text-sm font-semibold text-gold-400 mb-3">Compensation & Demand</p>
+          <div className="space-y-3">
+            <div>
+              <label className={labelCls}>Compensation Amount (Rs.)</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. 5,00,000 (leave blank if not applicable)"
+                  value={compensationAmount}
+                  onChange={(e) => setCompensationAmount(e.target.value)}
+                  disabled={loading}
+                  className={inputCls("compensationAmount")}
+                />
+                <button
+                  type="button"
+                  onClick={handleSuggestCompensation}
+                  disabled={loading || suggestionLoading}
+                  className="
+                    shrink-0 px-3 py-2.5 rounded-lg text-xs font-semibold
+                    bg-legal-blue/15 border border-legal-blue/25 text-legal-blue
+                    hover:bg-legal-blue/25 transition-all duration-200
+                    disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer
+                    whitespace-nowrap
+                  "
+                >
+                  {suggestionLoading ? "..." : "AI Suggest"}
+                </button>
+              </div>
+              {suggestion && (
+                <div className="mt-2 px-3 py-2 rounded-lg bg-legal-blue/10 border border-legal-blue/20 text-xs">
+                  <p className="text-legal-blue font-semibold mb-1">
+                    Suggested Range: Rs. {suggestion.min} — Rs. {suggestion.max}
+                  </p>
+                  <p className="text-ivory/50">{suggestion.reasoning}</p>
+                </div>
+              )}
+            </div>
+            <div>
+              <label className={labelCls}>Specific Demand / Relief Sought *</label>
+              <textarea
+                rows={3}
+                placeholder="Describe exactly what you want the recipient to do (e.g. return security deposit of Rs. 2,00,000, issue full and final settlement, vacate the premises...)"
+                value={specificDemand}
+                onChange={(e) => { setSpecificDemand(e.target.value); setErrors((p) => ({ ...p, specificDemand: false })); }}
+                disabled={loading}
+                className={inputCls("specificDemand") + " resize-none"}
+              />
+              {errors.specificDemand && <p className="text-[11px] text-legal-red mt-1">Required</p>}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Actions ── */}
         <div className="flex items-center justify-end gap-3">
           <button
             onClick={onClose}
@@ -160,7 +375,7 @@ export default function NoticeModal({ open, onClose, onGenerate, loading }: Noti
                 Generating…
               </>
             ) : (
-              "Generate Notice"
+              "Generate Legal Notice"
             )}
           </button>
         </div>

@@ -2,7 +2,8 @@ import Groq from "groq-sdk";
 import type {
   LegalAnalysis,
   LegalNoticeContent,
-  NoticeParty,
+  NoticeDetails,
+  CompensationSuggestion,
   ApplicableLaw,
   ActionStep,
   RequiredDocuments,
@@ -331,38 +332,53 @@ export async function analyzeLegalCase(
 
 /* ── Legal Notice Generation ──────────────────────────── */
 
-const LEGAL_NOTICE_PROMPT = `You are an expert Indian legal notice drafter.
-Given a legal analysis and party details, draft a formal Indian legal notice.
-Return ONLY valid JSON matching this schema exactly.
-Do not include markdown fences or any text outside the JSON.
+function getPronouns(gender: string, role: string) {
+  const isLawyer = role === "lawyer";
+  if (gender === "female") {
+    return { subject: isLawyer ? "my client" : "I", possessive: isLawyer ? "my client's" : "my", object: isLawyer ? "her" : "me", pronoun: "she", honorific: "Smt." };
+  }
+  if (gender === "male") {
+    return { subject: isLawyer ? "my client" : "I", possessive: isLawyer ? "my client's" : "my", object: isLawyer ? "him" : "me", pronoun: "he", honorific: "Shri" };
+  }
+  return { subject: isLawyer ? "my client" : "I", possessive: isLawyer ? "my client's" : "my", object: isLawyer ? "them" : "me", pronoun: "they", honorific: "" };
+}
 
-The notice must follow Indian legal notice conventions:
-- Use formal, legal English appropriate for Indian courts
+function buildNoticePrompt(details: NoticeDetails) {
+  const sp = getPronouns(details.senderGender, details.role);
+  const isLawyer = details.role === "lawyer";
+
+  return `You are an expert Indian legal notice drafter.
+Given party details and a legal analysis, draft a formal Indian legal notice.
+Return ONLY valid JSON matching the schema below. No markdown fences or extra text.
+
+IMPORTANT INSTRUCTIONS:
+- ${isLawyer ? "The notice is being sent BY A LAWYER on behalf of their client. Use third-person: \"my client\", \"" + sp.pronoun + "\", \"" + sp.possessive + "\"." : "The notice is being sent BY THE INDIVIDUAL themselves. Use first-person: \"I\", \"my\", \"me\"."}
+- Sender gender: ${details.senderGender} — use correct pronouns (${sp.pronoun}/${sp.possessive}/${sp.object})
+- Recipient gender: ${details.recipientGender} — use correct honorific and pronouns
+- The incident occurred on ${details.incidentDate} at ${details.incidentLocation}
+- Compensation demanded: Rs. ${details.compensationAmount}
+- Specific demand from sender: ${details.specificDemand}
+- Use formal legal English appropriate for Indian courts
 - Reference specific sections and acts from the analysis
-- State facts clearly in numbered paragraphs (3 to 6 paragraphs)
-- Begin fact paragraphs with "That my client..." or "That the Noticee..."
-- Make a specific, actionable demand
-- Set a reasonable compliance period (typically 15 or 30 days)
-- State consequences of non-compliance (filing civil/criminal proceedings as appropriate)
-- Include the standard "without prejudice" closing
+- State facts in 3 to 6 numbered paragraphs
+- ${isLawyer ? "Begin fact paragraphs with \"That my client...\" or \"That the Noticee...\"" : "Begin fact paragraphs with \"That I, the undersigned...\" or \"That the Noticee...\""}
+- Include the exact compensation amount (Rs. ${details.compensationAmount}) in the demand
+- Set a reasonable compliance period (15 or 30 days)
 
 JSON schema:
 {
-  "subject_line": "Legal Notice under [specific acts/sections from analysis]",
-  "under_reference": "Under [Section X of Act Y, Section Z of Act W]",
-  "facts_paragraphs": [
-    "That my client ...",
-    "That the Noticee ...",
-    "That despite repeated requests..."
-  ],
-  "grievance": "Specific legal wrong committed by the Noticee",
-  "demand": "Specific relief sought with amount/action",
+  "subject_line": "Legal Notice under [specific acts/sections]",
+  "under_reference": "Under [Section X of Act Y]",
+  "facts_paragraphs": ["paragraph1", "paragraph2", "..."],
+  "grievance": "Specific legal wrong",
+  "demand": "Specific relief with Rs. amount",
   "compliance_period": "15 days from receipt of this notice",
-  "consequences": "My client shall be constrained to initiate appropriate civil/criminal proceedings under the aforementioned provisions of law, at your risk, cost and consequences, which please note.",
-  "closing_statement": "This notice is issued without prejudice to any other legal rights and remedies available to my client under the law, all of which are expressly reserved."
+  "consequences": "Consequences of non-compliance including filing proceedings",
+  "closing_statement": "Without prejudice closing"
 }`;
+}
 
-function parseLegalNoticeResponse(text: string): Omit<LegalNoticeContent, "date" | "sender" | "recipient"> {
+function parseLegalNoticeResponse(text: string): Omit<LegalNoticeContent, "date" | "senderName" | "senderAddress" | "recipientName" | "recipientAddress"> {
   let cleaned = text.trim();
   if (cleaned.startsWith("```")) {
     cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
@@ -380,18 +396,17 @@ function parseLegalNoticeResponse(text: string): Omit<LegalNoticeContent, "date"
     compliance_period: String(parsed.compliance_period ?? "15 days from receipt of this notice"),
     consequences: String(
       parsed.consequences ??
-        "My client shall be constrained to initiate appropriate civil/criminal proceedings at your risk, cost and consequences."
+        "appropriate civil/criminal proceedings shall be initiated at your risk, cost and consequences."
     ),
     closing_statement: String(
       parsed.closing_statement ??
-        "This notice is issued without prejudice to any other legal rights and remedies available to my client under the law, all of which are expressly reserved."
+        "This notice is issued without prejudice to any other legal rights and remedies available under the law, all of which are expressly reserved."
     ),
   };
 }
 
 export async function generateLegalNotice(
-  sender: NoticeParty,
-  recipient: NoticeParty,
+  details: NoticeDetails,
   analysis: LegalAnalysis
 ): Promise<LegalNoticeContent> {
   const apiKeys: string[] = [];
@@ -405,20 +420,25 @@ export async function generateLegalNotice(
     throw new Error("No GROQ_API_KEY configured on the server.");
   }
 
-  // Build condensed analysis context for the AI
   const lawsSummary = analysis.applicable_laws
     .slice(0, 5)
     .map((l) => `- ${l.act} [Sections ${l.sections.join(", ")}]: ${l.description}`)
     .join("\n");
 
-  const userMessage = `Draft a formal Indian legal notice based on this analysis:
+  const systemPrompt = buildNoticePrompt(details);
 
-Sender: ${sender.name}, ${sender.address}
-Recipient: ${recipient.name}, ${recipient.address}
+  const userMessage = `Draft a formal Indian legal notice:
+
+Sender: ${details.senderName}, ${details.senderAddress}
+Recipient: ${details.recipientName}, ${details.recipientAddress}
 
 Case Type: ${analysis.case_type}
 Case Summary: ${analysis.case_summary}
 Jurisdiction: ${analysis.jurisdiction_note}
+Incident Date: ${details.incidentDate}
+Incident Location: ${details.incidentLocation}
+Compensation Amount: Rs. ${details.compensationAmount}
+Specific Demand: ${details.specificDemand}
 
 Applicable Laws:
 ${lawsSummary}
@@ -434,7 +454,7 @@ Limitation Period: ${analysis.time_sensitivity.limitation_period}`;
 
       const chatCompletion = await groq.chat.completions.create({
         messages: [
-          { role: "system", content: LEGAL_NOTICE_PROMPT },
+          { role: "system", content: systemPrompt },
           { role: "user", content: userMessage },
         ],
         model: "llama-3.1-8b-instant",
@@ -450,17 +470,13 @@ Limitation Period: ${analysis.time_sensitivity.limitation_period}`;
 
       const notice = parseLegalNoticeResponse(response);
 
-      const today = new Date().toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
-
       return {
         ...notice,
-        date: today,
-        sender,
-        recipient,
+        date: details.noticeDate,
+        senderName: details.senderName,
+        senderAddress: details.senderAddress,
+        recipientName: details.recipientName,
+        recipientAddress: details.recipientAddress,
       };
     } catch (error) {
       const err = error as Error;
@@ -473,6 +489,90 @@ Limitation Period: ${analysis.time_sensitivity.limitation_period}`;
         err.message.includes("tokens") ||
         err.message.includes("insufficient") ||
         err.message.includes("exceeded");
+
+      if (!isRateLimitOrTokenError) break;
+      console.warn(`API key failed: ${err.message}. Trying next key...`);
+    }
+  }
+
+  if (lastError) throw lastError;
+  throw new Error("All API keys failed. Please try again later.");
+}
+
+/* ── Compensation Suggestion ──────────────────────────── */
+
+const COMPENSATION_PROMPT = `You are an Indian legal compensation advisor.
+Based on the legal analysis provided, suggest a reasonable compensation range.
+Consider the case type, applicable laws, severity, and Indian court precedents.
+Return ONLY valid JSON. No markdown fences or extra text.
+
+JSON schema:
+{
+  "min": "amount in INR (e.g. 50,000)",
+  "max": "amount in INR (e.g. 5,00,000)",
+  "reasoning": "Brief explanation of why this range is appropriate (2-3 sentences)"
+}`;
+
+export async function suggestCompensation(
+  analysis: LegalAnalysis
+): Promise<CompensationSuggestion> {
+  const apiKeys: string[] = [];
+  for (let i = 1; ; i++) {
+    const key = process.env[`GROQ_API_KEY_${i}`] || (i === 1 ? process.env.GROQ_API_KEY : undefined);
+    if (!key) break;
+    apiKeys.push(key);
+  }
+
+  if (apiKeys.length === 0) {
+    throw new Error("No GROQ_API_KEY configured on the server.");
+  }
+
+  const userMessage = `Suggest a compensation range for this Indian legal case:
+
+Case Type: ${analysis.case_type}
+Summary: ${analysis.case_summary}
+Applicable Laws: ${analysis.applicable_laws.slice(0, 3).map((l) => l.act).join(", ")}
+Estimated Costs - Court Fees: ${analysis.estimated_costs.court_fees}, Lawyer Fees: ${analysis.estimated_costs.lawyer_fees}
+Urgency: ${analysis.time_sensitivity.urgency}`;
+
+  let lastError: Error | null = null;
+
+  for (const apiKey of apiKeys) {
+    try {
+      const groq = new Groq({ apiKey });
+
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [
+          { role: "system", content: COMPENSATION_PROMPT },
+          { role: "user", content: userMessage },
+        ],
+        model: "llama-3.1-8b-instant",
+        temperature: 0.3,
+        max_tokens: 512,
+        response_format: { type: "json_object" },
+      });
+
+      const response = chatCompletion.choices[0]?.message?.content;
+      if (!response) throw new Error("Empty response from AI.");
+
+      let cleaned = response.trim();
+      if (cleaned.startsWith("```")) {
+        cleaned = cleaned.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
+      }
+      const parsed = JSON.parse(cleaned || "{}") as Record<string, unknown>;
+
+      return {
+        min: String(parsed.min ?? "10,000"),
+        max: String(parsed.max ?? "1,00,000"),
+        reasoning: String(parsed.reasoning ?? "Based on the case type and applicable laws."),
+      };
+    } catch (error) {
+      const err = error as Error;
+      lastError = err;
+
+      const isRateLimitOrTokenError =
+        err.message.includes("rate limit") || err.message.includes("Rate limit") ||
+        err.message.includes("quota") || err.message.includes("tokens");
 
       if (!isRateLimitOrTokenError) break;
       console.warn(`API key failed: ${err.message}. Trying next key...`);

@@ -24,33 +24,27 @@ function toSafeMessage(message: string): string {
 export async function POST(req: NextRequest): Promise<NextResponse<NoticeApiResponse>> {
   try {
     const body = await req.json();
-    const { sender, recipient, analysis } = body ?? {};
+    const { details, analysis } = body ?? {};
 
-    // Validate sender
-    if (
-      !sender ||
-      typeof sender.name !== "string" || !sender.name.trim() ||
-      typeof sender.address !== "string" || !sender.address.trim()
-    ) {
+    // Validate details
+    if (!details) {
       return NextResponse.json(
-        { success: false, error: "Please provide complete sender details (name and address)." },
+        { success: false, error: "Notice details are required." },
         { status: 400 }
       );
     }
 
-    // Validate recipient
-    if (
-      !recipient ||
-      typeof recipient.name !== "string" || !recipient.name.trim() ||
-      typeof recipient.address !== "string" || !recipient.address.trim()
-    ) {
-      return NextResponse.json(
-        { success: false, error: "Please provide complete recipient details (name and address)." },
-        { status: 400 }
-      );
+    const requiredFields = ["senderName", "senderAddress", "recipientName", "recipientAddress", "noticeDate", "incidentDate", "incidentLocation", "specificDemand"] as const;
+    for (const field of requiredFields) {
+      if (!details[field] || typeof details[field] !== "string" || !details[field].trim()) {
+        return NextResponse.json(
+          { success: false, error: `Please provide ${field.replace(/([A-Z])/g, " $1").toLowerCase()}.` },
+          { status: 400 }
+        );
+      }
     }
 
-    // Validate analysis has essential fields
+    // Validate analysis
     if (!analysis || !analysis.case_summary || !Array.isArray(analysis.applicable_laws)) {
       return NextResponse.json(
         { success: false, error: "Invalid analysis data. Please run the case analysis first." },
@@ -58,7 +52,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<NoticeApiResp
       );
     }
 
-    const notice = await generateLegalNotice(sender, recipient, analysis);
+    const notice = await generateLegalNotice(details, analysis);
 
     return NextResponse.json({ success: true, data: notice });
   } catch (err: unknown) {
