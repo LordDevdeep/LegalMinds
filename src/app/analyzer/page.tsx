@@ -34,28 +34,34 @@ export default function AnalyzerPage() {
     setError(null);
     setResult(null);
 
-    try {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input: trimmed, language: LANGUAGE_NAMES[locale] }),
-      });
+    const maxRetries = 2;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const res = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ input: trimmed, language: LANGUAGE_NAMES[locale] }),
+        });
 
-      const json: ApiResponse = await res.json();
+        const json: ApiResponse = await res.json();
 
-      if (!json.success) {
-        setError(json.error);
-      } else {
-        setResult(json.data);
-        setTimeout(() => {
-          resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-        }, 100);
+        if (!json.success) {
+          // On server error, retry once
+          if (attempt < maxRetries - 1 && res.status >= 500) continue;
+          setError(json.error);
+        } else {
+          setResult(json.data);
+          setTimeout(() => {
+            resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 100);
+        }
+        break;
+      } catch {
+        if (attempt < maxRetries - 1) continue;
+        setError(t("common.networkError"));
       }
-    } catch {
-      setError(t("common.networkError"));
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }
 
   function handleClarify(question: string) {

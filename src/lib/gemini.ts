@@ -14,87 +14,20 @@ import type {
   EstimatedCosts,
 } from "./types";
 
-/* ── Language-specific style guides for plain, conversational output ── */
+/* ── Hindi language instruction (compact) ── */
 
-const LANGUAGE_STYLE_GUIDES: Record<string, string> = {
-  Hindi: `LANGUAGE & STYLE RULES FOR HINDI:
-- Write in Hindustani style (everyday Hindi-Urdu mix), NOT Sanskritized formal Hindi.
-- Use simple, conversational language that a common person (non-lawyer) can easily understand.
-- Prefer everyday words: "जमानत राशि" (not "प्रतिभूति निधि"), "किरायेदार" (not "पट्टाधारी"), "शिकायत दर्ज करें" (not "परिवाद दायर करें"), "मकान मालिक" (not "भू-स्वामी"), "कोर्ट" (not "न्यायालय"), "वकील" (not "अधिवक्ता"), "FIR दर्ज कराएं", "पुलिस स्टेशन", "जेल", "जुर्माना".
-- Avoid formal/Sanskrit-derived legal terms like "प्रतिवादी", "वादी", "अभियुक्त", "याचिका" — use "सामने वाला पक्ष", "शिकायतकर्ता", "आरोपी", "अर्ज़ी" instead.
-- Keep IPC/CrPC/BNS section numbers in English (e.g. "Section 420 IPC").
-- Keep sentences short and clear. Write as if explaining to a friend.
-- Add English terms in brackets where helpful, e.g. "सिक्योरिटी डिपॉजिट (Security Deposit)", "कंज़्यूमर कोर्ट (Consumer Court)".
-- End with disclaimer in Hindi that this is AI-generated info, not legal advice.`,
-
-  Kannada: `LANGUAGE & STYLE RULES FOR KANNADA:
-- Write in modern colloquial Kannada as spoken in everyday Karnataka.
-- Use simple, conversational language that any common person can understand.
-- Prefer everyday words: "ಕೋರ್ಟ್" (not "ನ್ಯಾಯಾಲಯ"), "ದೂರು ದಾಖಲಿಸಿ" (not "ದೂರು ಸಲ್ಲಿಸಿ"), "ಪೊಲೀಸ್ ಸ್ಟೇಷನ್", "ವಕೀಲ", "ಜೈಲು", "ದಂಡ", "ಬಾಡಿಗೆ ಹಣ", "ಮನೆ ಮಾಲೀಕ".
-- Avoid heavy Tatsama/Sanskrit-derived legal terms that sound archaic.
-- Keep IPC/CrPC/BNS section numbers in English (e.g. "Section 138 NI Act").
-- Keep sentences short. Write as if explaining to a neighbor.
-- Add English terms in brackets where helpful, e.g. "ಸೆಕ್ಯೂರಿಟಿ ಡಿಪಾಸಿಟ್ (Security Deposit)", "ಕನ್ಸ್ಯೂಮರ್ ಕೋರ್ಟ್ (Consumer Court)".
-- End with disclaimer in Kannada that this is AI-generated info, not legal advice.`,
-
-  Tamil: `LANGUAGE & STYLE RULES FOR TAMIL:
-- Write in modern spoken Tamil, NOT classical செந்தமிழ் or government gazette Tamil.
-- Use simple, conversational language that any common person can understand. This is the HIGHEST PRIORITY.
-- Prefer everyday words: "வழக்கு போடலாம்" (not "வழக்கு தொடரலாம்"), "வாடகை பணம்", "கோர்ட்" (not "நீதிமன்றம்"), "போலீஸ் ஸ்டேஷன்", "வக்கீல்", "ஜெயில்", "அபராதம்", "வீட்டு ஓனர்", "புகார் கொடுங்க".
-- Avoid classical Tamil legal vocabulary like "வழக்காடு மன்றம்", "மனுதாரர்", "எதிர்மனுதாரர்" — use "கோர்ட்", "புகார் கொடுத்தவர்", "எதிர் பக்கம்" instead.
-- Keep IPC/CrPC/BNS section numbers in English (e.g. "Section 406 IPC").
-- Keep sentences short. Write as if explaining to a family member.
-- Add English terms in brackets where helpful, e.g. "செக்யூரிட்டி டெபாசிட் (Security Deposit)", "கன்சூமர் கோர்ட் (Consumer Court)".
-- End with disclaimer in Tamil that this is AI-generated info, not legal advice.`,
-
-  Malayalam: `LANGUAGE & STYLE RULES FOR MALAYALAM:
-- Write in everyday Kerala Malayalam with a balanced formal-casual mix.
-- Use simple, conversational language that any common person can understand.
-- Prefer everyday words: "കേസ് കൊടുക്കാം" (not "വ്യവഹാരം"), "വാടക കരാർ", "കോടതി" (not "ന്യായാലയം"), "പോലീസ് സ്റ്റേഷൻ", "വക്കീൽ", "ജയിൽ", "പിഴ", "വീട്ടുടമ", "പരാതി കൊടുക്കുക".
-- Avoid overly pure/archaic Malayalam that sounds literary or old-fashioned.
-- Keep IPC/CrPC/BNS section numbers in English (e.g. "Section 420 IPC").
-- Keep sentences short. Write as if explaining to a relative.
-- Add English terms in brackets where helpful, e.g. "സെക്യൂരിറ്റി ഡെപ്പോസിറ്റ് (Security Deposit)", "കൺസ്യൂമർ കോർട്ട് (Consumer Court)".
-- End with disclaimer in Malayalam that this is AI-generated info, not legal advice.`,
-
-  Telugu: `LANGUAGE & STYLE RULES FOR TELUGU:
-- Write in simple modern Telugu as spoken in everyday Andhra Pradesh/Telangana.
-- Use simple, conversational language that any common person can understand.
-- Prefer everyday words: "కోర్టు" (not "న్యాయస్థానము"), "కేసు వేయవచ్చు", "అద్దె డబ్బు", "పోలీస్ స్టేషన్", "లాయర్", "జైలు", "జరిమానా", "ఇంటి ఓనర్", "కంప్లయింట్ ఇవ్వండి".
-- Avoid archaic formal Telugu like "న్యాయస్థానము", "వాది", "ప్రతివాది" — use "కోర్టు", "కంప్లయింట్ ఇచ్చిన వాళ్ళు", "ఎదుటి పక్షం" instead.
-- Keep IPC/CrPC/BNS section numbers in English (e.g. "Section 138 NI Act").
-- Keep sentences short. Write as if explaining to a friend.
-- Add English terms in brackets where helpful, e.g. "సెక్యూరిటీ డిపాజిట్ (Security Deposit)", "కన్స్యూమర్ కోర్ట్ (Consumer Court)".
-- End with disclaimer in Telugu that this is AI-generated info, not legal advice.`,
-};
+const HINDI_INSTRUCTION = `
+IMPORTANT: Write ALL JSON text values in Hindi (Devanagari script). Use simple Hindustani (everyday Hindi-Urdu mix).
+Prefer: कोर्ट, वकील, FIR, पुलिस स्टेशन, जमानत राशि, किरायेदार, शिकायत दर्ज करें.
+Avoid: न्यायालय, अधिवक्ता, प्रतिभूति, वादी, प्रतिवादी.
+Keep act names and section numbers in English (e.g. "Section 420 IPC").
+Add English terms in brackets where helpful, e.g. "सिक्योरिटी डिपॉजिट (Security Deposit)".
+Provide SAME detail level as English. Do NOT shorten.
+Even if user writes in English, respond in Hindi.`;
 
 function getLanguageInstruction(language: string): string {
-  const guide = LANGUAGE_STYLE_GUIDES[language];
-  if (!guide) return "";
-
-  return `\n\nMANDATORY LANGUAGE REQUIREMENT — READ CAREFULLY:
-1. The user may write their input in ANY language (English, Hindi, etc.). REGARDLESS of the input language, you MUST write your ENTIRE JSON response in ${language} using ${language} script.
-2. EVERY SINGLE text value in the JSON MUST be in ${language}. This includes ALL of these fields: case_summary, case_type, related_case_types, jurisdiction_note, every description field, explanation, every action field, every details field, every timeline field, limitation_period, urgency, deadline_note, best_case, likely_case, worst_case, estimated_timeline, every item in missing_info, every item in clarifying_questions, confidence_level, confidence_reasoning, disclaimer.
-3. The ONLY things that should remain in English are: act names (e.g. "Indian Penal Code"), section numbers (e.g. "Section 420"), and the JSON keys themselves.
-4. Do NOT mix languages. Do NOT write some values in English and some in ${language}. ALL values must be in ${language}.
-5. Provide the SAME level of detail and length as you would in English. Do NOT shorten, summarize, or simplify.
-6. If the user writes in English, translate the analysis to ${language}. If the user writes in ${language}, respond in ${language}. Either way, output is ALWAYS in ${language}.
-
-${guide}`;
-}
-
-function getNoticeLanguageInstruction(language: string): string {
-  const guide = LANGUAGE_STYLE_GUIDES[language];
-  if (!guide) return "";
-
-  return `\n\nMANDATORY LANGUAGE REQUIREMENT — READ CAREFULLY:
-1. The user may provide details in ANY language. REGARDLESS of input language, you MUST write ALL text values in ${language} using ${language} script.
-2. EVERY field must be in ${language}: subject_line, under_reference, ALL facts_paragraphs, grievance, demand, compliance_period, consequences, closing_statement.
-3. ONLY act names and section numbers stay in English.
-4. Do NOT mix languages. ALL values must be in ${language}.
-5. Provide the SAME level of detail as English. Do NOT shorten.
-
-${guide}`;
+  if (language === "Hindi") return "\n" + HINDI_INSTRUCTION;
+  return "";
 }
 
 const SYSTEM_PROMPT = `You are LegalMinds AI, an Indian law assistant.
@@ -368,12 +301,12 @@ export async function analyzeLegalCase(
 
       const chatCompletion = await groq.chat.completions.create({
         messages: [
-          { role: "system", content: SYSTEM_PROMPT + getLanguageInstruction(language) },
-          { role: "user", content: language !== "English" ? `RESPOND IN ${language.toUpperCase()} using simple, everyday ${language} that common people understand.\n\nUser's legal situation:\n${sanitized}` : `User's legal situation:\n${sanitized}` },
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: `User's legal situation:\n${sanitized}` },
         ],
         model: "llama-3.1-8b-instant",
         temperature: 0.3,
-        max_tokens: language !== "English" ? 4096 : 2048,
+        max_tokens: 2048,
         response_format: { type: "json_object" },
       });
 
@@ -386,31 +319,12 @@ export async function analyzeLegalCase(
     } catch (error) {
       const err = error as Error;
       lastError = err;
-
-      // Check if this is a rate limit or token exhaustion error
-      const isRateLimitOrTokenError =
-        err.message.includes("rate limit") ||
-        err.message.includes("Rate limit") ||
-        err.message.includes("quota") ||
-        err.message.includes("tokens") ||
-        err.message.includes("insufficient") ||
-        err.message.includes("exceeded");
-
-      // If it's not a rate limit/token error, don't try next key
-      if (!isRateLimitOrTokenError) {
-        break;
-      }
-
-      // Continue to next key if this was a rate limit/token error
-      console.warn(`API key failed with rate limit/token error: ${err.message}. Trying next key...`);
+      console.warn(`API key failed: ${err.message}. Trying next key...`);
+      // Always try next key on any error
     }
   }
 
-  // If we get here, all keys failed
-  if (lastError) {
-    throw lastError;
-  }
-
+  if (lastError) throw lastError;
   throw new Error("All API keys failed. Please try again later.");
 }
 
@@ -510,9 +424,9 @@ export async function generateLegalNotice(
     .map((l) => `- ${l.act} [Sections ${l.sections.join(", ")}]: ${l.description}`)
     .join("\n");
 
-  const systemPrompt = buildNoticePrompt(details) + getNoticeLanguageInstruction(language);
+  const systemPrompt = buildNoticePrompt(details);
 
-  const userMessage = (language !== "English" ? `RESPOND IN ${language.toUpperCase()} using simple, everyday ${language} that common people understand.\n\n` : "") + `Draft a formal Indian legal notice:
+  const userMessage = `Draft a formal Indian legal notice:
 
 Sender: ${details.senderName}, ${details.senderAddress}
 Recipient: ${details.recipientName}, ${details.recipientAddress}
@@ -544,7 +458,7 @@ Limitation Period: ${analysis.time_sensitivity.limitation_period}`;
         ],
         model: "llama-3.1-8b-instant",
         temperature: 0.2,
-        max_tokens: language !== "English" ? 4096 : 2048,
+        max_tokens: 2048,
         response_format: { type: "json_object" },
       });
 
@@ -566,16 +480,6 @@ Limitation Period: ${analysis.time_sensitivity.limitation_period}`;
     } catch (error) {
       const err = error as Error;
       lastError = err;
-
-      const isRateLimitOrTokenError =
-        err.message.includes("rate limit") ||
-        err.message.includes("Rate limit") ||
-        err.message.includes("quota") ||
-        err.message.includes("tokens") ||
-        err.message.includes("insufficient") ||
-        err.message.includes("exceeded");
-
-      if (!isRateLimitOrTokenError) break;
       console.warn(`API key failed: ${err.message}. Trying next key...`);
     }
   }
@@ -629,8 +533,8 @@ Urgency: ${analysis.time_sensitivity.urgency}`;
 
       const chatCompletion = await groq.chat.completions.create({
         messages: [
-          { role: "system", content: COMPENSATION_PROMPT + (language !== "English" ? `\n\nIMPORTANT: Write the "reasoning" field in ${language} using ${language} script. The "min" and "max" fields should remain as numbers in INR format.` : "") },
-          { role: "user", content: (language !== "English" ? `Write the reasoning in ${language}.\n\n` : "") + userMessage },
+          { role: "system", content: COMPENSATION_PROMPT + (language === "Hindi" ? `\nIMPORTANT: Write "reasoning" in simple Hindi (Devanagari). Keep "min" and "max" as INR numbers.` : "") },
+          { role: "user", content: (language === "Hindi" ? `Write reasoning in Hindi.\n\n` : "") + userMessage },
         ],
         model: "llama-3.1-8b-instant",
         temperature: 0.3,
@@ -655,12 +559,6 @@ Urgency: ${analysis.time_sensitivity.urgency}`;
     } catch (error) {
       const err = error as Error;
       lastError = err;
-
-      const isRateLimitOrTokenError =
-        err.message.includes("rate limit") || err.message.includes("Rate limit") ||
-        err.message.includes("quota") || err.message.includes("tokens");
-
-      if (!isRateLimitOrTokenError) break;
       console.warn(`API key failed: ${err.message}. Trying next key...`);
     }
   }
