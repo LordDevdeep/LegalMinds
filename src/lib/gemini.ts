@@ -16,19 +16,21 @@ import type {
 
 /* ── Hindi language instruction (compact) ── */
 
-const HINDI_INSTRUCTION = `
-IMPORTANT: Write ALL JSON text values in Hindi (Devanagari script). Use simple Hindustani (everyday Hindi-Urdu mix).
-Prefer: कोर्ट, वकील, FIR, पुलिस स्टेशन, जमानत राशि, किरायेदार, शिकायत दर्ज करें.
-Avoid: न्यायालय, अधिवक्ता, प्रतिभूति, वादी, प्रतिवादी.
-Keep act names and section numbers in English (e.g. "Section 420 IPC").
-Add English terms in brackets where helpful, e.g. "सिक्योरिटी डिपॉजिट (Security Deposit)".
-Provide SAME detail level as English. Do NOT shorten.
-Even if user writes in English, respond in Hindi.`;
+const HINDI_SYSTEM_PROMPT = `You are LegalMinds AI, an Indian law assistant. You MUST respond ENTIRELY in Hindi (Devanagari script).
 
-function getLanguageInstruction(language: string): string {
-  if (language === "Hindi") return "\n" + HINDI_INSTRUCTION;
-  return "";
-}
+STRICT RULES:
+1. EVERY string value in the JSON MUST be in Hindi. No English text in any value except act names and section numbers.
+2. case_summary → Hindi. case_type → Hindi. jurisdiction_note → Hindi. description → Hindi. explanation → Hindi. action → Hindi. details → Hindi. timeline → Hindi. deadline_note → Hindi. best_case → Hindi. likely_case → Hindi. worst_case → Hindi. estimated_timeline → Hindi. confidence_reasoning → Hindi. disclaimer → Hindi. missing_info → Hindi. clarifying_questions → Hindi. urgency → Hindi. limitation_period → Hindi.
+3. ONLY act names like "Indian Penal Code" and section numbers like "Section 420" stay in English.
+4. Use simple Hindustani: कोर्ट (not न्यायालय), वकील (not अधिवक्ता), शिकायत दर्ज करें, FIR, पुलिस स्टेशन, जमानत राशि, किरायेदार, जुर्माना, जेल.
+5. Add English in brackets where helpful: "सिक्योरिटी डिपॉजिट (Security Deposit)".
+6. Give FULL detailed response. Do NOT shorten.
+
+Analyze the user's legal problem and return ONLY valid JSON. No markdown fences.
+If information is incomplete, include entries in "missing_info" and "clarifying_questions".
+Use BNS/BNSS for incidents after July 1, 2024. Refer only to Indian law.
+
+`;
 
 const SYSTEM_PROMPT = `You are LegalMinds AI, an Indian law assistant.
 Analyze the user's legal problem and return ONLY valid JSON.
@@ -299,14 +301,17 @@ export async function analyzeLegalCase(
     try {
       const groq = new Groq({ apiKey });
 
+      const isHindi = language === "Hindi";
+      const systemContent = isHindi ? HINDI_SYSTEM_PROMPT + SYSTEM_PROMPT.split("\n\n").slice(1).join("\n\n") : SYSTEM_PROMPT;
+
       const chatCompletion = await groq.chat.completions.create({
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: `User's legal situation:\n${sanitized}` },
+          { role: "system", content: systemContent },
+          { role: "user", content: isHindi ? `सभी जवाब हिंदी में दो। English में कुछ मत लिखो (सिर्फ act names और section numbers English में रखो).\n\nUser's legal situation:\n${sanitized}` : `User's legal situation:\n${sanitized}` },
         ],
         model: "llama-3.1-8b-instant",
         temperature: 0.3,
-        max_tokens: 2048,
+        max_tokens: isHindi ? 3000 : 2048,
         response_format: { type: "json_object" },
       });
 
