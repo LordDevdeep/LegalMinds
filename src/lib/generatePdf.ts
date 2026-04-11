@@ -122,25 +122,33 @@ export async function downloadLegalNoticePdf(data: LegalAnalysis, locale: Locale
     </div>
   `;
 
+  // Create a wrapper that is on-screen but visually hidden behind an overlay.
+  // html2canvas requires elements to be in the visible viewport to capture them.
+  const overlay = document.createElement("div");
+  overlay.style.cssText = "position:fixed;inset:0;z-index:99999;background:white;overflow:auto;";
+
   const container = document.createElement("div");
   container.innerHTML = html;
-  container.style.position = "absolute";
-  container.style.left = "-9999px";
-  document.body.appendChild(container);
+  container.style.cssText = "width:210mm;padding:20mm;box-sizing:border-box;background:white;";
+
+  overlay.appendChild(container);
+  document.body.appendChild(overlay);
 
   const dateStr = new Date().toISOString().split("T")[0];
 
-  await (html2pdf() as any)
-    .set({
-      margin: 20,
-      filename: `LegalAnalysis_${dateStr}.pdf`,
-      image: { type: "jpeg", quality: 0.95 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-      pagebreak: { mode: ["avoid-all", "css", "legacy"] },
-    })
-    .from(container)
-    .save();
-
-  document.body.removeChild(container);
+  try {
+    await (html2pdf() as any)
+      .set({
+        margin: 0,
+        filename: `LegalAnalysis_${dateStr}.pdf`,
+        image: { type: "jpeg", quality: 0.95 },
+        html2canvas: { scale: 2, useCORS: true, scrollY: 0, windowWidth: 794 },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+      })
+      .from(container)
+      .save();
+  } finally {
+    document.body.removeChild(overlay);
+  }
 }
