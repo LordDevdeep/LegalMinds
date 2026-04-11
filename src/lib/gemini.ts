@@ -14,6 +14,86 @@ import type {
   EstimatedCosts,
 } from "./types";
 
+/* ── Language-specific style guides for plain, conversational output ── */
+
+const LANGUAGE_STYLE_GUIDES: Record<string, string> = {
+  Hindi: `LANGUAGE & STYLE RULES FOR HINDI:
+- Write in Hindustani style (everyday Hindi-Urdu mix), NOT Sanskritized formal Hindi.
+- Use simple, conversational language that a common person (non-lawyer) can easily understand.
+- Prefer everyday words: "जमानत राशि" (not "प्रतिभूति निधि"), "किरायेदार" (not "पट्टाधारी"), "शिकायत दर्ज करें" (not "परिवाद दायर करें"), "मकान मालिक" (not "भू-स्वामी"), "कोर्ट" (not "न्यायालय"), "वकील" (not "अधिवक्ता"), "FIR दर्ज कराएं", "पुलिस स्टेशन", "जेल", "जुर्माना".
+- Avoid formal/Sanskrit-derived legal terms like "प्रतिवादी", "वादी", "अभियुक्त", "याचिका" — use "सामने वाला पक्ष", "शिकायतकर्ता", "आरोपी", "अर्ज़ी" instead.
+- Keep IPC/CrPC/BNS section numbers in English (e.g. "Section 420 IPC").
+- Keep sentences short and clear. Write as if explaining to a friend.
+- Add English terms in brackets where helpful, e.g. "सिक्योरिटी डिपॉजिट (Security Deposit)", "कंज़्यूमर कोर्ट (Consumer Court)".
+- End with disclaimer in Hindi that this is AI-generated info, not legal advice.`,
+
+  Kannada: `LANGUAGE & STYLE RULES FOR KANNADA:
+- Write in modern colloquial Kannada as spoken in everyday Karnataka.
+- Use simple, conversational language that any common person can understand.
+- Prefer everyday words: "ಕೋರ್ಟ್" (not "ನ್ಯಾಯಾಲಯ"), "ದೂರು ದಾಖಲಿಸಿ" (not "ದೂರು ಸಲ್ಲಿಸಿ"), "ಪೊಲೀಸ್ ಸ್ಟೇಷನ್", "ವಕೀಲ", "ಜೈಲು", "ದಂಡ", "ಬಾಡಿಗೆ ಹಣ", "ಮನೆ ಮಾಲೀಕ".
+- Avoid heavy Tatsama/Sanskrit-derived legal terms that sound archaic.
+- Keep IPC/CrPC/BNS section numbers in English (e.g. "Section 138 NI Act").
+- Keep sentences short. Write as if explaining to a neighbor.
+- Add English terms in brackets where helpful, e.g. "ಸೆಕ್ಯೂರಿಟಿ ಡಿಪಾಸಿಟ್ (Security Deposit)", "ಕನ್ಸ್ಯೂಮರ್ ಕೋರ್ಟ್ (Consumer Court)".
+- End with disclaimer in Kannada that this is AI-generated info, not legal advice.`,
+
+  Tamil: `LANGUAGE & STYLE RULES FOR TAMIL:
+- Write in modern spoken Tamil, NOT classical செந்தமிழ் or government gazette Tamil.
+- Use simple, conversational language that any common person can understand. This is the HIGHEST PRIORITY.
+- Prefer everyday words: "வழக்கு போடலாம்" (not "வழக்கு தொடரலாம்"), "வாடகை பணம்", "கோர்ட்" (not "நீதிமன்றம்"), "போலீஸ் ஸ்டேஷன்", "வக்கீல்", "ஜெயில்", "அபராதம்", "வீட்டு ஓனர்", "புகார் கொடுங்க".
+- Avoid classical Tamil legal vocabulary like "வழக்காடு மன்றம்", "மனுதாரர்", "எதிர்மனுதாரர்" — use "கோர்ட்", "புகார் கொடுத்தவர்", "எதிர் பக்கம்" instead.
+- Keep IPC/CrPC/BNS section numbers in English (e.g. "Section 406 IPC").
+- Keep sentences short. Write as if explaining to a family member.
+- Add English terms in brackets where helpful, e.g. "செக்யூரிட்டி டெபாசிட் (Security Deposit)", "கன்சூமர் கோர்ட் (Consumer Court)".
+- End with disclaimer in Tamil that this is AI-generated info, not legal advice.`,
+
+  Malayalam: `LANGUAGE & STYLE RULES FOR MALAYALAM:
+- Write in everyday Kerala Malayalam with a balanced formal-casual mix.
+- Use simple, conversational language that any common person can understand.
+- Prefer everyday words: "കേസ് കൊടുക്കാം" (not "വ്യവഹാരം"), "വാടക കരാർ", "കോടതി" (not "ന്യായാലയം"), "പോലീസ് സ്റ്റേഷൻ", "വക്കീൽ", "ജയിൽ", "പിഴ", "വീട്ടുടമ", "പരാതി കൊടുക്കുക".
+- Avoid overly pure/archaic Malayalam that sounds literary or old-fashioned.
+- Keep IPC/CrPC/BNS section numbers in English (e.g. "Section 420 IPC").
+- Keep sentences short. Write as if explaining to a relative.
+- Add English terms in brackets where helpful, e.g. "സെക്യൂരിറ്റി ഡെപ്പോസിറ്റ് (Security Deposit)", "കൺസ്യൂമർ കോർട്ട് (Consumer Court)".
+- End with disclaimer in Malayalam that this is AI-generated info, not legal advice.`,
+
+  Telugu: `LANGUAGE & STYLE RULES FOR TELUGU:
+- Write in simple modern Telugu as spoken in everyday Andhra Pradesh/Telangana.
+- Use simple, conversational language that any common person can understand.
+- Prefer everyday words: "కోర్టు" (not "న్యాయస్థానము"), "కేసు వేయవచ్చు", "అద్దె డబ్బు", "పోలీస్ స్టేషన్", "లాయర్", "జైలు", "జరిమానా", "ఇంటి ఓనర్", "కంప్లయింట్ ఇవ్వండి".
+- Avoid archaic formal Telugu like "న్యాయస్థానము", "వాది", "ప్రతివాది" — use "కోర్టు", "కంప్లయింట్ ఇచ్చిన వాళ్ళు", "ఎదుటి పక్షం" instead.
+- Keep IPC/CrPC/BNS section numbers in English (e.g. "Section 138 NI Act").
+- Keep sentences short. Write as if explaining to a friend.
+- Add English terms in brackets where helpful, e.g. "సెక్యూరిటీ డిపాజిట్ (Security Deposit)", "కన్స్యూమర్ కోర్ట్ (Consumer Court)".
+- End with disclaimer in Telugu that this is AI-generated info, not legal advice.`,
+};
+
+function getLanguageInstruction(language: string): string {
+  const guide = LANGUAGE_STYLE_GUIDES[language];
+  if (!guide) return "";
+
+  return `\n\nCRITICAL LANGUAGE REQUIREMENT:
+You MUST write ALL text values in the JSON response in ${language} using ${language} script.
+This includes: case_summary, case_type, related_case_types, jurisdiction_note, description fields, explanation, action details, timeline, deadline_note, best_case, likely_case, worst_case, estimated_timeline, missing_info, clarifying_questions, confidence_reasoning, disclaimer.
+Only act names (like "Indian Penal Code") and section numbers (like "Section 420") should remain in English.
+Provide the SAME level of detail as you would in English — do NOT shorten or simplify the response.
+
+${guide}`;
+}
+
+function getNoticeLanguageInstruction(language: string): string {
+  const guide = LANGUAGE_STYLE_GUIDES[language];
+  if (!guide) return "";
+
+  return `\n\nCRITICAL LANGUAGE REQUIREMENT:
+You MUST write ALL text values in the JSON in ${language} using ${language} script.
+This includes subject_line, under_reference, all facts_paragraphs, grievance, demand, compliance_period, consequences, and closing_statement.
+Only act names and section numbers stay in English.
+Provide the SAME level of detail as you would in English — do NOT shorten the response.
+
+${guide}`;
+}
+
 const SYSTEM_PROMPT = `You are LegalMinds AI, an Indian law assistant.
 Analyze the user's legal problem and return ONLY valid JSON.
 Do not include markdown fences, explanations outside JSON, or any other text.
@@ -285,8 +365,8 @@ export async function analyzeLegalCase(
 
       const chatCompletion = await groq.chat.completions.create({
         messages: [
-          { role: "system", content: SYSTEM_PROMPT + (language !== "English" ? `\n\nCRITICAL LANGUAGE REQUIREMENT: You MUST write ALL text values in the JSON response in ${language} language using ${language} script. This includes: case_summary, case_type, related_case_types, jurisdiction_note, description fields, explanation, action details, timeline, deadline_note, best_case, likely_case, worst_case, estimated_timeline, missing_info, clarifying_questions, confidence_reasoning, disclaimer — ALL must be in ${language}. Only act names (like "Indian Penal Code") and section numbers (like "Section 420") should remain in English. Every other string value MUST be written in ${language}. Provide the SAME level of detail as you would in English — do NOT shorten or simplify the response.` : "") },
-          { role: "user", content: language !== "English" ? `RESPOND IN ${language.toUpperCase()}.\n\nUser's legal situation:\n${sanitized}` : `User's legal situation:\n${sanitized}` },
+          { role: "system", content: SYSTEM_PROMPT + getLanguageInstruction(language) },
+          { role: "user", content: language !== "English" ? `RESPOND IN ${language.toUpperCase()} using simple, everyday ${language} that common people understand.\n\nUser's legal situation:\n${sanitized}` : `User's legal situation:\n${sanitized}` },
         ],
         model: "llama-3.1-8b-instant",
         temperature: 0.3,
@@ -427,9 +507,9 @@ export async function generateLegalNotice(
     .map((l) => `- ${l.act} [Sections ${l.sections.join(", ")}]: ${l.description}`)
     .join("\n");
 
-  const systemPrompt = buildNoticePrompt(details) + (language !== "English" ? `\n\nCRITICAL LANGUAGE REQUIREMENT: You MUST write ALL text values in the JSON in ${language} using ${language} script. This includes subject_line, under_reference, all facts_paragraphs, grievance, demand, compliance_period, consequences, and closing_statement. Only act names and section numbers stay in English. Provide the SAME level of detail as you would in English — do NOT shorten the response.` : "");
+  const systemPrompt = buildNoticePrompt(details) + getNoticeLanguageInstruction(language);
 
-  const userMessage = (language !== "English" ? `RESPOND IN ${language.toUpperCase()}.\n\n` : "") + `Draft a formal Indian legal notice:
+  const userMessage = (language !== "English" ? `RESPOND IN ${language.toUpperCase()} using simple, everyday ${language} that common people understand.\n\n` : "") + `Draft a formal Indian legal notice:
 
 Sender: ${details.senderName}, ${details.senderAddress}
 Recipient: ${details.recipientName}, ${details.recipientAddress}
