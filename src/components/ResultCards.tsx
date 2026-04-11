@@ -33,37 +33,19 @@ export default function ResultCards({ data, onClarify }: Props) {
   async function handleGenerateNotice(details: NoticeDetails) {
     setNoticeLoading(true);
     try {
-      // Always generate English version first
-      const englishRes = await fetch("/api/generate-notice", {
+      // Always generate in English only
+      const res = await fetch("/api/generate-notice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ details, analysis: data, language: "English" }),
       });
-      const englishJson = await englishRes.json();
-      if (!englishJson.success) {
-        alert(englishJson.error || t("common.failedNotice"));
-        return;
-      }
-
-      if (locale === "en") {
-        // English only — single version
-        await downloadLegalNoticeDocument(englishJson.data);
+      const json = await res.json();
+      if (json.success) {
+        await downloadLegalNoticeDocument(json.data);
+        setShowNoticeModal(false);
       } else {
-        // Bilingual — generate translated version too
-        const translatedRes = await fetch("/api/generate-notice", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ details, analysis: data, language: LANGUAGE_NAMES[locale] }),
-        });
-        const translatedJson = await translatedRes.json();
-        if (translatedJson.success) {
-          await downloadLegalNoticeDocument(englishJson.data, translatedJson.data);
-        } else {
-          // Fallback: download English only if translation fails
-          await downloadLegalNoticeDocument(englishJson.data);
-        }
+        alert(json.error || t("common.failedNotice"));
       }
-      setShowNoticeModal(false);
     } catch {
       alert(t("common.networkErrorShort"));
     } finally {

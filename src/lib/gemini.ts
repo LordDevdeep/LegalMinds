@@ -599,7 +599,8 @@ JSON schema:
 }`;
 
 export async function suggestCompensation(
-  analysis: LegalAnalysis
+  analysis: LegalAnalysis,
+  language: string = "English"
 ): Promise<CompensationSuggestion> {
   const apiKeys: string[] = [];
   for (let i = 1; ; i++) {
@@ -628,8 +629,8 @@ Urgency: ${analysis.time_sensitivity.urgency}`;
 
       const chatCompletion = await groq.chat.completions.create({
         messages: [
-          { role: "system", content: COMPENSATION_PROMPT },
-          { role: "user", content: userMessage },
+          { role: "system", content: COMPENSATION_PROMPT + (language !== "English" ? `\n\nIMPORTANT: Write the "reasoning" field in ${language} using ${language} script. The "min" and "max" fields should remain as numbers in INR format.` : "") },
+          { role: "user", content: (language !== "English" ? `Write the reasoning in ${language}.\n\n` : "") + userMessage },
         ],
         model: "llama-3.1-8b-instant",
         temperature: 0.3,

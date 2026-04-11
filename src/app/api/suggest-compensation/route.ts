@@ -8,7 +8,7 @@ export const maxDuration = 15;
 export async function POST(req: NextRequest): Promise<NextResponse<CompensationApiResponse>> {
   try {
     const body = await req.json();
-    const { analysis } = body ?? {};
+    const { analysis, language = "English" } = body ?? {};
 
     if (!analysis || !analysis.case_summary) {
       return NextResponse.json(
@@ -17,7 +17,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<CompensationA
       );
     }
 
-    const suggestion = await suggestCompensation(analysis);
+    const suggestion = await suggestCompensation(analysis, language);
 
     return NextResponse.json({ success: true, data: suggestion });
   } catch (err: unknown) {

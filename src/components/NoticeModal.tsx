@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import type { NoticeDetails, Gender, NoticeRole, LegalAnalysis, CompensationSuggestion } from "@/lib/types";
 import { LoaderIcon } from "./Icons";
 import { useLanguage } from "@/i18n/LanguageContext";
+import { LANGUAGE_NAMES } from "@/i18n";
 
 interface NoticeModalProps {
   open: boolean;
@@ -19,7 +20,7 @@ function todayStr() {
 }
 
 export default function NoticeModal({ open, onClose, onGenerate, loading, analysis }: NoticeModalProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
 
   const [role, setRole] = useState<NoticeRole>("individual");
   const [senderName, setSenderName] = useState("");
@@ -60,7 +61,7 @@ export default function NoticeModal({ open, onClose, onGenerate, loading, analys
       const res = await fetch("/api/suggest-compensation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ analysis }),
+        body: JSON.stringify({ analysis, language: LANGUAGE_NAMES[locale] }),
       });
       const json = await res.json();
       if (json.success) setSuggestion(json.data);
