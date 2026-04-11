@@ -1,196 +1,129 @@
-import { jsPDF } from "jspdf";
 import type { LegalNoticeContent } from "./types";
 
-const PAGE_W = 210;
-const MARGIN = 20;
-const CONTENT_W = PAGE_W - MARGIN * 2;
-const LINE_H = 6;
+function escHtml(str: string): string {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
+}
+
+function buildNoticeHtml(notice: LegalNoticeContent, title: string = "LEGAL NOTICE"): string {
+  const factsHtml = notice.facts_paragraphs
+    .map((p, i) => `<p style="margin:6px 0 6px 20px;text-indent:-20px;"><strong>${i + 1}.</strong>&nbsp;&nbsp;${escHtml(p)}</p>`)
+    .join("");
+
+  return `
+    <div style="font-family:'Noto Sans',system-ui,-apple-system,sans-serif;color:#1e1e1e;padding:0;max-width:170mm;">
+      <!-- Date -->
+      <div style="text-align:right;font-size:11px;color:#444;margin-bottom:16px;">Date: ${escHtml(notice.date)}</div>
+
+      <!-- To -->
+      <div style="margin-bottom:12px;">
+        <strong style="font-size:11px;">To,</strong><br>
+        <strong>${escHtml(notice.recipientName)}</strong><br>
+        <span style="font-size:10px;color:#444;">${escHtml(notice.recipientAddress)}</span>
+      </div>
+
+      <!-- From -->
+      <div style="margin-bottom:12px;">
+        <strong style="font-size:11px;">From,</strong><br>
+        <strong>${escHtml(notice.senderName)}</strong><br>
+        <span style="font-size:10px;color:#444;">${escHtml(notice.senderAddress)}</span>
+      </div>
+
+      <!-- Subject -->
+      <p style="font-size:11px;margin:12px 0 6px 0;"><strong>Subject:</strong> ${escHtml(notice.subject_line)}</p>
+
+      <!-- Heading -->
+      <h1 style="text-align:center;font-size:16px;font-weight:700;margin:16px 0 2px 0;">${escHtml(title)}</h1>
+      <div style="width:120px;height:2px;background:#c8aa32;margin:0 auto 4px auto;"></div>
+      ${notice.under_reference ? `<p style="text-align:center;font-size:10px;font-style:italic;color:#555;margin:0 0 12px 0;">${escHtml(notice.under_reference)}</p>` : ""}
+
+      <!-- Salutation -->
+      <p style="margin:12px 0 8px 0;">Sir/Madam,</p>
+
+      <!-- Facts -->
+      <div style="font-size:11px;line-height:1.7;">${factsHtml}</div>
+
+      <!-- Grievance -->
+      <div style="margin-top:14px;">
+        <h3 style="font-size:12px;font-weight:700;margin:0 0 4px 0;">GRIEVANCE:</h3>
+        <p style="font-size:11px;line-height:1.7;margin:0;">${escHtml(notice.grievance)}</p>
+      </div>
+
+      <!-- Demand -->
+      <div style="margin-top:14px;">
+        <h3 style="font-size:12px;font-weight:700;margin:0 0 4px 0;">DEMAND:</h3>
+        <p style="font-size:11px;line-height:1.7;margin:0;">${escHtml(notice.demand)}</p>
+      </div>
+
+      <!-- Compliance -->
+      <p style="font-size:11px;line-height:1.7;margin-top:14px;">
+        You are hereby called upon to comply with the above demand within <strong>${escHtml(notice.compliance_period)}</strong>, failing which ${escHtml(notice.consequences)}
+      </p>
+
+      <!-- Closing -->
+      <p style="font-size:11px;font-style:italic;line-height:1.7;margin-top:14px;">${escHtml(notice.closing_statement)}</p>
+
+      <!-- Signature -->
+      <div style="margin-top:30px;text-align:right;padding-right:20px;">
+        <p style="margin:0;font-size:11px;">Yours faithfully,</p>
+        <div style="margin-top:24px;border-top:1px solid #666;width:150px;display:inline-block;"></div>
+        <p style="margin:4px 0 0 0;font-weight:700;">${escHtml(notice.senderName)}</p>
+      </div>
+
+      <!-- Disclaimer -->
+      <div style="margin-top:30px;padding-top:8px;border-top:1px solid #ccc;">
+        <p style="font-size:8px;color:#999;text-align:center;margin:0;">
+          DISCLAIMER: This legal notice was generated with AI assistance. It should be reviewed by a qualified advocate before dispatch.
+        </p>
+      </div>
+    </div>
+  `;
+}
 
 /**
- * Generate a court-submittable Indian legal notice PDF.
+ * Generate a legal notice PDF. If translatedNotice is provided (non-English),
+ * the PDF will have English version first, then translated version on a new page.
  */
-export function downloadLegalNoticeDocument(notice: LegalNoticeContent) {
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
-  let y = MARGIN;
+export async function downloadLegalNoticeDocument(
+  notice: LegalNoticeContent,
+  translatedNotice?: LegalNoticeContent
+) {
+  const html2pdf = (await import("html2pdf.js")).default;
 
-  function ensureSpace(needed: number) {
-    if (y + needed > 275) {
-      doc.addPage();
-      y = MARGIN;
-    }
+  let fullHtml: string;
+
+  if (translatedNotice) {
+    // Bilingual: English first, then translated version
+    fullHtml = `
+      <div>
+        ${buildNoticeHtml(notice, "LEGAL NOTICE")}
+        <div style="page-break-before:always;"></div>
+        ${buildNoticeHtml(translatedNotice, "LEGAL NOTICE")}
+      </div>
+    `;
+  } else {
+    // English only
+    fullHtml = buildNoticeHtml(notice, "LEGAL NOTICE");
   }
 
-  function writeLines(text: string, x: number, maxW: number, font: "normal" | "bold" | "italic" = "normal", size = 11) {
-    doc.setFont("helvetica", font);
-    doc.setFontSize(size);
-    const lines = doc.splitTextToSize(text, maxW);
-    for (const line of lines) {
-      ensureSpace(LINE_H);
-      doc.text(line, x, y);
-      y += LINE_H;
-    }
-  }
-
-  doc.setTextColor(30, 30, 30);
-
-  // ─── Date (top-right) ───
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
-  doc.text(`Date: ${notice.date}`, PAGE_W - MARGIN, y, { align: "right" });
-  y += LINE_H * 2;
-
-  // ─── To (Recipient) ───
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("To,", MARGIN, y);
-  y += LINE_H;
-  writeLines(notice.recipientName, MARGIN, CONTENT_W, "bold");
-  writeLines(notice.recipientAddress, MARGIN, CONTENT_W, "normal", 10);
-  y += LINE_H;
-
-  // ─── From (Sender) ───
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("From,", MARGIN, y);
-  y += LINE_H;
-  writeLines(notice.senderName, MARGIN, CONTENT_W, "bold");
-  writeLines(notice.senderAddress, MARGIN, CONTENT_W, "normal", 10);
-  y += LINE_H;
-
-  // ─── Subject ───
-  ensureSpace(14);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(30, 30, 30);
-  const subjectLines = doc.splitTextToSize(`Subject: ${notice.subject_line}`, CONTENT_W);
-  for (const line of subjectLines) {
-    doc.text(line, MARGIN, y);
-    y += LINE_H;
-  }
-  y += 4;
-
-  // ─── LEGAL NOTICE heading ───
-  ensureSpace(20);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text("LEGAL NOTICE", PAGE_W / 2, y, { align: "center" });
-  y += 2;
-  doc.setDrawColor(200, 170, 50);
-  doc.setLineWidth(0.6);
-  const headingW = doc.getTextWidth("LEGAL NOTICE");
-  doc.line(PAGE_W / 2 - headingW / 2, y, PAGE_W / 2 + headingW / 2, y);
-  y += LINE_H;
-
-  // ─── Under reference ───
-  if (notice.under_reference) {
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(10);
-    doc.setTextColor(60, 60, 60);
-    const refLines = doc.splitTextToSize(notice.under_reference, CONTENT_W - 20);
-    for (const line of refLines) {
-      doc.text(line, PAGE_W / 2, y, { align: "center" });
-      y += LINE_H;
-    }
-    y += 2;
-  }
-
-  y += 4;
-  doc.setTextColor(30, 30, 30);
-
-  // ─── Salutation ───
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
-  doc.text("Sir/Madam,", MARGIN, y);
-  y += LINE_H + 2;
-
-  // ─── Fact paragraphs (numbered) ───
-  for (let i = 0; i < notice.facts_paragraphs.length; i++) {
-    ensureSpace(LINE_H * 3);
-    const paraNum = `${i + 1}.  `;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    const numW = doc.getTextWidth(paraNum);
-    doc.text(paraNum, MARGIN, y);
-
-    doc.setFont("helvetica", "normal");
-    const paraLines = doc.splitTextToSize(notice.facts_paragraphs[i], CONTENT_W - numW);
-    if (paraLines.length > 0) {
-      doc.text(paraLines[0], MARGIN + numW, y);
-      y += LINE_H;
-    }
-    for (let j = 1; j < paraLines.length; j++) {
-      ensureSpace(LINE_H);
-      doc.text(paraLines[j], MARGIN + numW, y);
-      y += LINE_H;
-    }
-    y += 3;
-  }
-
-  // ─── Grievance ───
-  ensureSpace(LINE_H * 4);
-  y += 2;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("GRIEVANCE:", MARGIN, y);
-  y += LINE_H;
-  writeLines(notice.grievance, MARGIN, CONTENT_W);
-  y += 3;
-
-  // ─── Demand ───
-  ensureSpace(LINE_H * 4);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("DEMAND:", MARGIN, y);
-  y += LINE_H;
-  writeLines(notice.demand, MARGIN, CONTENT_W);
-  y += 3;
-
-  // ─── Compliance & Consequences ───
-  ensureSpace(LINE_H * 5);
-  writeLines(
-    `You are hereby called upon to comply with the above demand within ${notice.compliance_period}, failing which ${notice.consequences}`,
-    MARGIN,
-    CONTENT_W,
-  );
-  y += 4;
-
-  // ─── Closing statement ───
-  ensureSpace(LINE_H * 4);
-  writeLines(notice.closing_statement, MARGIN, CONTENT_W, "italic");
-  y += LINE_H * 2;
-
-  // ─── Signature block ───
-  ensureSpace(30);
-  const sigX = PAGE_W - MARGIN - 60;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
-  doc.text("Yours faithfully,", sigX, y);
-  y += LINE_H * 3;
-  doc.setDrawColor(100, 100, 100);
-  doc.setLineWidth(0.3);
-  doc.line(sigX, y, sigX + 55, y);
-  y += LINE_H;
-  doc.setFont("helvetica", "bold");
-  doc.text(notice.senderName, sigX, y);
-
-  // ─── Footer on every page ───
-  const pageCount = doc.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(160, 160, 160);
-    doc.text(`Page ${i} of ${pageCount}`, PAGE_W / 2, 288, { align: "center" });
-    doc.setFont("helvetica", "italic");
-    doc.setFontSize(7);
-    doc.text(
-      "DISCLAIMER: This legal notice was generated with AI assistance. It should be reviewed by a qualified advocate before dispatch.",
-      PAGE_W / 2,
-      292,
-      { align: "center" }
-    );
-  }
+  const container = document.createElement("div");
+  container.innerHTML = fullHtml;
+  container.style.position = "absolute";
+  container.style.left = "-9999px";
+  document.body.appendChild(container);
 
   const dateStr = new Date().toISOString().split("T")[0];
-  doc.save(`LegalNotice_${dateStr}.pdf`);
+
+  await (html2pdf() as any)
+    .set({
+      margin: 20,
+      filename: `LegalNotice_${dateStr}.pdf`,
+      image: { type: "jpeg", quality: 0.95 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["css", "legacy"], avoid: ["div"] },
+    })
+    .from(container)
+    .save();
+
+  document.body.removeChild(container);
 }

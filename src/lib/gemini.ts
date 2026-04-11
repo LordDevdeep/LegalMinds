@@ -72,11 +72,13 @@ function getLanguageInstruction(language: string): string {
   const guide = LANGUAGE_STYLE_GUIDES[language];
   if (!guide) return "";
 
-  return `\n\nCRITICAL LANGUAGE REQUIREMENT:
-You MUST write ALL text values in the JSON response in ${language} using ${language} script.
-This includes: case_summary, case_type, related_case_types, jurisdiction_note, description fields, explanation, action details, timeline, deadline_note, best_case, likely_case, worst_case, estimated_timeline, missing_info, clarifying_questions, confidence_reasoning, disclaimer.
-Only act names (like "Indian Penal Code") and section numbers (like "Section 420") should remain in English.
-Provide the SAME level of detail as you would in English — do NOT shorten or simplify the response.
+  return `\n\nMANDATORY LANGUAGE REQUIREMENT — READ CAREFULLY:
+1. The user may write their input in ANY language (English, Hindi, etc.). REGARDLESS of the input language, you MUST write your ENTIRE JSON response in ${language} using ${language} script.
+2. EVERY SINGLE text value in the JSON MUST be in ${language}. This includes ALL of these fields: case_summary, case_type, related_case_types, jurisdiction_note, every description field, explanation, every action field, every details field, every timeline field, limitation_period, urgency, deadline_note, best_case, likely_case, worst_case, estimated_timeline, every item in missing_info, every item in clarifying_questions, confidence_level, confidence_reasoning, disclaimer.
+3. The ONLY things that should remain in English are: act names (e.g. "Indian Penal Code"), section numbers (e.g. "Section 420"), and the JSON keys themselves.
+4. Do NOT mix languages. Do NOT write some values in English and some in ${language}. ALL values must be in ${language}.
+5. Provide the SAME level of detail and length as you would in English. Do NOT shorten, summarize, or simplify.
+6. If the user writes in English, translate the analysis to ${language}. If the user writes in ${language}, respond in ${language}. Either way, output is ALWAYS in ${language}.
 
 ${guide}`;
 }
@@ -85,11 +87,12 @@ function getNoticeLanguageInstruction(language: string): string {
   const guide = LANGUAGE_STYLE_GUIDES[language];
   if (!guide) return "";
 
-  return `\n\nCRITICAL LANGUAGE REQUIREMENT:
-You MUST write ALL text values in the JSON in ${language} using ${language} script.
-This includes subject_line, under_reference, all facts_paragraphs, grievance, demand, compliance_period, consequences, and closing_statement.
-Only act names and section numbers stay in English.
-Provide the SAME level of detail as you would in English — do NOT shorten the response.
+  return `\n\nMANDATORY LANGUAGE REQUIREMENT — READ CAREFULLY:
+1. The user may provide details in ANY language. REGARDLESS of input language, you MUST write ALL text values in ${language} using ${language} script.
+2. EVERY field must be in ${language}: subject_line, under_reference, ALL facts_paragraphs, grievance, demand, compliance_period, consequences, closing_statement.
+3. ONLY act names and section numbers stay in English.
+4. Do NOT mix languages. ALL values must be in ${language}.
+5. Provide the SAME level of detail as English. Do NOT shorten.
 
 ${guide}`;
 }

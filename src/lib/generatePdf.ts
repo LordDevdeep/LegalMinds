@@ -1,260 +1,146 @@
-import { jsPDF } from "jspdf";
 import type { LegalAnalysis } from "./types";
-
-const PAGE_W = 210; // A4 width mm
-const MARGIN = 20;
-const CONTENT_W = PAGE_W - MARGIN * 2;
-const LINE_H = 6; // normal line height mm
-const SECTION_GAP = 10;
+import type { Locale } from "@/i18n";
+import { getTranslation } from "@/i18n";
 
 /**
- * Generate a professionally formatted legal-notice PDF from the analysis data.
- * Downloads automatically as LegalNotice_YYYY-MM-DD.pdf.
+ * Generate a professionally formatted legal analysis PDF using html2pdf.js.
+ * Uses browser's native font rendering so all Indic scripts display correctly.
  */
-export function downloadLegalNoticePdf(data: LegalAnalysis) {
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
-  let y = MARGIN;
+export async function downloadLegalNoticePdf(data: LegalAnalysis, locale: Locale = "en") {
+  const html2pdf = (await import("html2pdf.js")).default;
 
-  /* ── helpers ───────────────────────────────────────── */
+  const t = (key: string) => getTranslation(locale, key);
 
-  function ensureSpace(needed: number) {
-    if (y + needed > 280) {
-      doc.addPage();
-      y = MARGIN;
-    }
-  }
-
-  function heading(text: string, size = 16) {
-    ensureSpace(14);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(size);
-    doc.text(text, PAGE_W / 2, y, { align: "center" });
-    y += size * 0.6;
-  }
-
-  function sectionTitle(text: string) {
-    ensureSpace(14);
-    y += SECTION_GAP;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.setTextColor(30, 30, 30);
-    doc.text(text, MARGIN, y);
-    y += 2;
-    // underline
-    doc.setDrawColor(200, 170, 50);
-    doc.setLineWidth(0.4);
-    doc.line(MARGIN, y, MARGIN + CONTENT_W, y);
-    y += LINE_H;
-  }
-
-  function bodyText(text: string) {
-    if (!text) return;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(40, 40, 40);
-    const lines = doc.splitTextToSize(text, CONTENT_W);
-    for (const line of lines) {
-      ensureSpace(LINE_H);
-      doc.text(line, MARGIN, y);
-      y += LINE_H;
-    }
-  }
-
-  function labelValue(label: string, value: string) {
-    if (!value || value === "—") return;
-    ensureSpace(LINE_H * 2);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(40, 40, 40);
-    doc.text(`${label}: `, MARGIN, y);
-    const labelWidth = doc.getTextWidth(`${label}: `);
-    doc.setFont("helvetica", "normal");
-    const valueLines = doc.splitTextToSize(value, CONTENT_W - labelWidth);
-    doc.text(valueLines[0], MARGIN + labelWidth, y);
-    y += LINE_H;
-    for (let i = 1; i < valueLines.length; i++) {
-      ensureSpace(LINE_H);
-      doc.text(valueLines[i], MARGIN, y);
-      y += LINE_H;
-    }
-  }
-
-  function bulletList(items: string[]) {
-    for (const item of items) {
-      ensureSpace(LINE_H);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.setTextColor(40, 40, 40);
-      const lines = doc.splitTextToSize(`•  ${item}`, CONTENT_W - 4);
-      for (const line of lines) {
-        ensureSpace(LINE_H);
-        doc.text(line, MARGIN + 2, y);
-        y += LINE_H;
-      }
-    }
-  }
-
-  /* ── build the PDF ─────────────────────────────────── */
-
-  // Date (top-right)
   const today = new Date().toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "long",
     year: "numeric",
   });
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(80, 80, 80);
-  doc.text(`Date: ${today}`, PAGE_W - MARGIN, y, { align: "right" });
-  y += LINE_H * 2;
 
-  // Main heading
-  heading("LEGAL NOTICE", 18);
-  y += 4;
-
-  // Subject
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(30, 30, 30);
-  const subjectText = `Subject: Legal Analysis — ${data.case_type}`;
-  const subjectLines = doc.splitTextToSize(subjectText, CONTENT_W);
-  for (const line of subjectLines) {
-    doc.text(line, MARGIN, y);
-    y += LINE_H;
-  }
-  y += 4;
-
-  // Horizontal rule
-  doc.setDrawColor(180, 180, 180);
-  doc.setLineWidth(0.3);
-  doc.line(MARGIN, y, MARGIN + CONTENT_W, y);
-  y += LINE_H;
-
-  // 1 — Case Summary
-  sectionTitle("1. Case Summary");
-  bodyText(data.case_summary);
-
-  // 2 — Jurisdiction
-  sectionTitle("2. Jurisdiction");
-  bodyText(data.jurisdiction_note);
-
-  // 3 — Applicable Laws
-  if (data.applicable_laws.length > 0) {
-    sectionTitle("3. Applicable Laws");
-    for (const law of data.applicable_laws) {
-      ensureSpace(LINE_H * 3);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.text(law.act, MARGIN, y);
-      if (law.sections.length > 0) {
-        const actW = doc.getTextWidth(law.act + "  ");
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`[${law.sections.join(", ")}]`, MARGIN + actW, y);
-      }
-      y += LINE_H;
-      doc.setTextColor(40, 40, 40);
-      bodyText(law.description);
-      y += 2;
-    }
+  function escHtml(str: string): string {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
   }
 
-  // 4 — Recommended Actions
-  if (data.action_steps.length > 0) {
-    sectionTitle("4. Recommended Actions");
-    for (const step of data.action_steps) {
-      ensureSpace(LINE_H * 3);
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(40, 40, 40);
-      doc.text(`${step.step}. ${step.action}`, MARGIN, y);
-      y += LINE_H;
-      bodyText(step.details);
-      if (step.timeline) {
-        labelValue("Timeline", step.timeline);
-      }
-      y += 2;
-    }
+  function sectionHtml(num: number, title: string, content: string): string {
+    return `
+      <div style="margin-top:18px;">
+        <h3 style="font-size:13px;font-weight:700;color:#1e1e1e;margin:0 0 4px 0;padding-bottom:4px;border-bottom:2px solid #c8aa32;">
+          ${num}. ${escHtml(title)}
+        </h3>
+        <div style="font-size:11px;color:#282828;line-height:1.7;">${content}</div>
+      </div>`;
   }
 
-  // 5 — Time Sensitivity
-  sectionTitle("5. Time Sensitivity");
-  labelValue("Limitation Period", data.time_sensitivity.limitation_period);
-  labelValue("Urgency", data.time_sensitivity.urgency);
-  bodyText(data.time_sensitivity.deadline_note);
+  function labelVal(label: string, value: string): string {
+    if (!value || value === "—") return "";
+    return `<p style="margin:3px 0;"><strong>${escHtml(label)}:</strong> ${escHtml(value)}</p>`;
+  }
 
-  // 6 — Possible Outcomes
-  sectionTitle("6. Possible Outcomes");
-  labelValue("Best Case", data.possible_outcomes.best_case);
-  labelValue("Likely Case", data.possible_outcomes.likely_case);
-  labelValue("Worst Case", data.possible_outcomes.worst_case);
-  labelValue("Estimated Timeline", data.possible_outcomes.estimated_timeline);
+  // Build applicable laws HTML
+  let lawsHtml = "";
+  for (const law of data.applicable_laws) {
+    lawsHtml += `<div style="background:#f9f9f9;border:1px solid #e0e0e0;border-radius:6px;padding:8px 10px;margin-bottom:8px;">
+      <strong>${escHtml(law.act)}</strong>
+      ${law.sections.length > 0 ? `<span style="color:#888;font-size:10px;margin-left:6px;">[${law.sections.join(", ")}]</span>` : ""}
+      <p style="margin:4px 0 2px 0;">${escHtml(law.description)}</p>
+      <p style="margin:0;font-size:9px;color:#999;text-transform:uppercase;">${t("results.confidenceLabel")} ${law.confidence}</p>
+    </div>`;
+  }
 
-  // 7 — Required Documents
-  sectionTitle("7. Required Documents");
+  // Build action steps HTML
+  let stepsHtml = "";
+  for (const step of data.action_steps) {
+    stepsHtml += `<div style="margin-bottom:8px;">
+      <strong>${step.step}. ${escHtml(step.action)}</strong>
+      <p style="margin:2px 0;">${escHtml(step.details)}</p>
+      ${step.timeline ? `<p style="margin:0;font-size:10px;color:#666;">${t("results.timeline")} ${escHtml(step.timeline)}</p>` : ""}
+    </div>`;
+  }
+
+  // Build documents HTML
+  let docsHtml = `<div style="display:flex;gap:16px;flex-wrap:wrap;">`;
   if (data.required_documents.essential.length > 0) {
-    ensureSpace(LINE_H);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text("Essential:", MARGIN, y);
-    y += LINE_H;
-    bulletList(data.required_documents.essential);
+    docsHtml += `<div style="flex:1;min-width:140px;"><strong>${t("results.essential")}</strong><ul style="margin:4px 0;padding-left:16px;">
+      ${data.required_documents.essential.map(d => `<li>${escHtml(d)}</li>`).join("")}
+    </ul></div>`;
   }
   if (data.required_documents.supporting.length > 0) {
-    ensureSpace(LINE_H);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.text("Supporting:", MARGIN, y);
-    y += LINE_H;
-    bulletList(data.required_documents.supporting);
+    docsHtml += `<div style="flex:1;min-width:140px;"><strong>${t("results.supporting")}</strong><ul style="margin:4px 0;padding-left:16px;">
+      ${data.required_documents.supporting.map(d => `<li>${escHtml(d)}</li>`).join("")}
+    </ul></div>`;
   }
-  labelValue("Identity Proof", data.required_documents.identity_proof);
+  docsHtml += `<div style="flex:1;min-width:140px;"><strong>${t("results.idProof")}</strong><p style="margin:4px 0;">${escHtml(data.required_documents.identity_proof)}</p></div>`;
+  docsHtml += `</div>`;
 
-  // 8 — Estimated Costs
-  sectionTitle("8. Estimated Costs");
-  labelValue("Court Fees", data.estimated_costs.court_fees);
-  labelValue("Lawyer Fees", data.estimated_costs.lawyer_fees);
-  labelValue("Other", data.estimated_costs.other);
+  const html = `
+    <div style="font-family:'Noto Sans',system-ui,-apple-system,sans-serif;color:#1e1e1e;padding:0;max-width:170mm;">
+      <!-- Header -->
+      <div style="text-align:right;font-size:10px;color:#666;margin-bottom:16px;">Date: ${today}</div>
+      <h1 style="text-align:center;font-size:18px;font-weight:700;margin:0 0 6px 0;">LEGAL ANALYSIS</h1>
+      <p style="text-align:center;font-size:11px;color:#555;margin:0 0 4px 0;"><strong>Subject:</strong> ${escHtml(data.case_type)}</p>
+      <hr style="border:none;border-top:1px solid #ccc;margin:10px 0;">
 
-  // 9 — Confidence
-  sectionTitle("9. Analysis Confidence");
-  labelValue("Confidence Level", data.confidence_level);
-  bodyText(data.confidence_reasoning);
+      ${sectionHtml(1, t("results.caseSummary"), `<p style="margin:0;">${escHtml(data.case_summary)}</p>`)}
 
-  // Footer
-  ensureSpace(30);
-  y += SECTION_GAP;
-  doc.setDrawColor(180, 180, 180);
-  doc.setLineWidth(0.3);
-  doc.line(MARGIN, y, MARGIN + CONTENT_W, y);
-  y += LINE_H + 2;
-  doc.setFont("helvetica", "italic");
-  doc.setFontSize(9);
-  doc.setTextColor(120, 120, 120);
-  const footerLines = doc.splitTextToSize(
-    "This notice is sent without prejudice to any other legal rights. " +
-      "This analysis is AI-generated and for informational purposes only. " +
-      "It does not constitute legal advice. Consult a qualified lawyer for your specific situation.",
-    CONTENT_W,
-  );
-  for (const line of footerLines) {
-    ensureSpace(LINE_H);
-    doc.text(line, MARGIN, y);
-    y += 5;
-  }
+      ${sectionHtml(2, t("results.jurisdiction"), `<p style="margin:0;">${escHtml(data.jurisdiction_note)}</p>`)}
 
-  // Page numbers
-  const pageCount = doc.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(160, 160, 160);
-    doc.text(`Page ${i} of ${pageCount}`, PAGE_W / 2, 290, { align: "center" });
-  }
+      ${data.applicable_laws.length > 0 ? sectionHtml(3, t("results.applicableLaws"), lawsHtml) : ""}
 
-  // Download
+      ${data.action_steps.length > 0 ? sectionHtml(4, t("results.actionSteps"), stepsHtml) : ""}
+
+      ${sectionHtml(5, t("results.timeSensitivity"), `
+        ${labelVal(t("results.limitationPeriod").replace(":", ""), data.time_sensitivity.limitation_period)}
+        ${labelVal(t("results.urgency").replace(":", ""), data.time_sensitivity.urgency)}
+        <p style="margin:3px 0;">${escHtml(data.time_sensitivity.deadline_note)}</p>
+      `)}
+
+      ${sectionHtml(6, t("results.possibleOutcomes"), `
+        ${labelVal(t("results.bestCase").replace(":", ""), data.possible_outcomes.best_case)}
+        ${labelVal(t("results.likelyCase").replace(":", ""), data.possible_outcomes.likely_case)}
+        ${labelVal(t("results.worstCase").replace(":", ""), data.possible_outcomes.worst_case)}
+        ${labelVal(t("results.estTimeline").replace(":", ""), data.possible_outcomes.estimated_timeline)}
+      `)}
+
+      ${sectionHtml(7, t("results.requiredDocs"), docsHtml)}
+
+      ${sectionHtml(8, t("results.estimatedCosts"), `
+        ${labelVal(t("results.courtFees").replace(":", ""), data.estimated_costs.court_fees)}
+        ${labelVal(t("results.lawyerFees").replace(":", ""), data.estimated_costs.lawyer_fees)}
+        ${labelVal(t("results.other").replace(":", ""), data.estimated_costs.other)}
+      `)}
+
+      ${sectionHtml(9, t("results.confidence"), `
+        <p style="margin:0;"><strong>${data.confidence_level}</strong> — ${escHtml(data.confidence_reasoning)}</p>
+      `)}
+
+      <!-- Disclaimer -->
+      <div style="margin-top:20px;padding:8px 10px;border-top:1px solid #ccc;">
+        <p style="font-size:9px;color:#999;text-align:center;margin:0;">
+          <strong>${t("results.disclaimer")}</strong> ${escHtml(data.disclaimer || t("results.disclaimerText"))}
+        </p>
+      </div>
+    </div>
+  `;
+
+  const container = document.createElement("div");
+  container.innerHTML = html;
+  container.style.position = "absolute";
+  container.style.left = "-9999px";
+  document.body.appendChild(container);
+
   const dateStr = new Date().toISOString().split("T")[0];
-  doc.save(`LegalNotice_${dateStr}.pdf`);
+
+  await (html2pdf() as any)
+    .set({
+      margin: 20,
+      filename: `LegalAnalysis_${dateStr}.pdf`,
+      image: { type: "jpeg", quality: 0.95 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+    })
+    .from(container)
+    .save();
+
+  document.body.removeChild(container);
 }

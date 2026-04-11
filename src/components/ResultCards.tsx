@@ -33,18 +33,37 @@ export default function ResultCards({ data, onClarify }: Props) {
   async function handleGenerateNotice(details: NoticeDetails) {
     setNoticeLoading(true);
     try {
-      const res = await fetch("/api/generate-notice", {
+      // Always generate English version first
+      const englishRes = await fetch("/api/generate-notice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ details, analysis: data, language: LANGUAGE_NAMES[locale] }),
+        body: JSON.stringify({ details, analysis: data, language: "English" }),
       });
-      const json = await res.json();
-      if (json.success) {
-        downloadLegalNoticeDocument(json.data);
-        setShowNoticeModal(false);
-      } else {
-        alert(json.error || t("common.failedNotice"));
+      const englishJson = await englishRes.json();
+      if (!englishJson.success) {
+        alert(englishJson.error || t("common.failedNotice"));
+        return;
       }
+
+      if (locale === "en") {
+        // English only — single version
+        await downloadLegalNoticeDocument(englishJson.data);
+      } else {
+        // Bilingual — generate translated version too
+        const translatedRes = await fetch("/api/generate-notice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ details, analysis: data, language: LANGUAGE_NAMES[locale] }),
+        });
+        const translatedJson = await translatedRes.json();
+        if (translatedJson.success) {
+          await downloadLegalNoticeDocument(englishJson.data, translatedJson.data);
+        } else {
+          // Fallback: download English only if translation fails
+          await downloadLegalNoticeDocument(englishJson.data);
+        }
+      }
+      setShowNoticeModal(false);
     } catch {
       alert(t("common.networkErrorShort"));
     } finally {
@@ -357,7 +376,7 @@ export default function ResultCards({ data, onClarify }: Props) {
           {t("results.generateNotice")}
         </button>
         <button
-          onClick={() => downloadLegalNoticePdf(data)}
+          onClick={() => downloadLegalNoticePdf(data, locale)}
           className="
             flex items-center gap-2.5 px-6 py-3 rounded-xl
             bg-white/[0.04] hover:bg-white/[0.08]
