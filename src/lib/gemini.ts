@@ -285,12 +285,12 @@ export async function analyzeLegalCase(
 
       const chatCompletion = await groq.chat.completions.create({
         messages: [
-          { role: "system", content: SYSTEM_PROMPT + (language !== "English" ? `\n\nIMPORTANT: Respond entirely in ${language}. All text values in the JSON must be in ${language}, except for act names and section numbers which should remain in English.` : "") },
-          { role: "user", content: `User's legal situation:\n${sanitized}` },
+          { role: "system", content: SYSTEM_PROMPT + (language !== "English" ? `\n\nCRITICAL LANGUAGE REQUIREMENT: You MUST write ALL text values in the JSON response in ${language} language using ${language} script. This includes: case_summary, case_type, related_case_types, jurisdiction_note, description fields, explanation, action details, timeline, deadline_note, best_case, likely_case, worst_case, estimated_timeline, missing_info, clarifying_questions, confidence_reasoning, disclaimer — ALL must be in ${language}. Only act names (like "Indian Penal Code") and section numbers (like "Section 420") should remain in English. Every other string value MUST be written in ${language}. Provide the SAME level of detail as you would in English — do NOT shorten or simplify the response.` : "") },
+          { role: "user", content: language !== "English" ? `RESPOND IN ${language.toUpperCase()}.\n\nUser's legal situation:\n${sanitized}` : `User's legal situation:\n${sanitized}` },
         ],
         model: "llama-3.1-8b-instant",
         temperature: 0.3,
-        max_tokens: 2048,
+        max_tokens: language !== "English" ? 4096 : 2048,
         response_format: { type: "json_object" },
       });
 
@@ -427,9 +427,9 @@ export async function generateLegalNotice(
     .map((l) => `- ${l.act} [Sections ${l.sections.join(", ")}]: ${l.description}`)
     .join("\n");
 
-  const systemPrompt = buildNoticePrompt(details) + (language !== "English" ? `\n\nIMPORTANT: Draft the entire legal notice in ${language}. All text values in the JSON must be in ${language}, except for act names and section numbers which should remain in English.` : "");
+  const systemPrompt = buildNoticePrompt(details) + (language !== "English" ? `\n\nCRITICAL LANGUAGE REQUIREMENT: You MUST write ALL text values in the JSON in ${language} using ${language} script. This includes subject_line, under_reference, all facts_paragraphs, grievance, demand, compliance_period, consequences, and closing_statement. Only act names and section numbers stay in English. Provide the SAME level of detail as you would in English — do NOT shorten the response.` : "");
 
-  const userMessage = `Draft a formal Indian legal notice:
+  const userMessage = (language !== "English" ? `RESPOND IN ${language.toUpperCase()}.\n\n` : "") + `Draft a formal Indian legal notice:
 
 Sender: ${details.senderName}, ${details.senderAddress}
 Recipient: ${details.recipientName}, ${details.recipientAddress}
@@ -461,7 +461,7 @@ Limitation Period: ${analysis.time_sensitivity.limitation_period}`;
         ],
         model: "llama-3.1-8b-instant",
         temperature: 0.2,
-        max_tokens: 2048,
+        max_tokens: language !== "English" ? 4096 : 2048,
         response_format: { type: "json_object" },
       });
 
