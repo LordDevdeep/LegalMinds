@@ -5,22 +5,26 @@ import Link from "next/link";
 import type { LegalAnalysis, ApiResponse } from "@/lib/types";
 import Image from "next/image";
 import { ArrowRightIcon, LoaderIcon } from "@/components/Icons";
+import LanguageSelector from "@/components/LanguageSelector";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
 import ResultCards from "@/components/ResultCards";
-
-const EXAMPLES = [
-  "My landlord is refusing to return my security deposit after I vacated the flat with proper notice in Mumbai.",
-  "I was terminated from my IT job without any prior notice or severance pay after working for 3 years.",
-  "A neighbour is building a wall that encroaches 2 feet into my property in Bengaluru.",
-];
+import { useLanguage } from "@/i18n/LanguageContext";
+import { LANGUAGE_NAMES } from "@/i18n";
 
 export default function AnalyzerPage() {
+  const { t, locale } = useLanguage();
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<LegalAnalysis | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
+
+  const examples = [
+    t("analyzer.example1"),
+    t("analyzer.example2"),
+    t("analyzer.example3"),
+  ];
 
   async function handleSubmit() {
     const trimmed = input.trim();
@@ -34,7 +38,7 @@ export default function AnalyzerPage() {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input: trimmed }),
+        body: JSON.stringify({ input: trimmed, language: LANGUAGE_NAMES[locale] }),
       });
 
       const json: ApiResponse = await res.json();
@@ -43,13 +47,12 @@ export default function AnalyzerPage() {
         setError(json.error);
       } else {
         setResult(json.data);
-        // Scroll to results after render
         setTimeout(() => {
           resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
         }, 100);
       }
     } catch {
-      setError("Network error — please check your connection and try again.");
+      setError(t("common.networkError"));
     } finally {
       setLoading(false);
     }
@@ -91,9 +94,12 @@ export default function AnalyzerPage() {
             <span className="text-gold-400 group-hover:text-gold-500 transition-colors">Minds</span>
           </span>
         </Link>
-        <span className="text-xs text-ivory/25 hidden sm:block">
-          AI Legal Analysis — Indian Law
-        </span>
+        <div className="flex items-center gap-4">
+          <LanguageSelector />
+          <span className="text-xs text-ivory/25 hidden sm:block">
+            {t("analyzer.tagline")}
+          </span>
+        </div>
       </nav>
 
       {/* Main */}
@@ -101,11 +107,10 @@ export default function AnalyzerPage() {
         {/* Heading */}
         <div className="mb-8 animate-fade-in">
           <h1 className="font-display text-2xl md:text-3xl text-ivory mb-2">
-            Case Analyzer
+            {t("analyzer.heading")}
           </h1>
           <p className="text-sm text-ivory/40">
-            Describe your legal situation in detail. The more context you
-            provide, the more specific the analysis.
+            {t("analyzer.description")}
           </p>
         </div>
 
@@ -117,7 +122,7 @@ export default function AnalyzerPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="e.g. My employer has not paid my salary for the last 3 months despite repeated requests..."
+              placeholder={t("analyzer.placeholder")}
               rows={5}
               maxLength={5000}
               disabled={loading}
@@ -131,14 +136,14 @@ export default function AnalyzerPage() {
               "
             />
             <span className="absolute bottom-3 right-4 text-[10px] text-ivory/20">
-              {input.length} / 5000
+              {input.length} {t("analyzer.charCount")}
             </span>
           </div>
 
           {/* Submit */}
           <div className="flex items-center justify-between mt-4 gap-4">
             <span className="text-[11px] text-ivory/20 hidden sm:block">
-              Ctrl + Enter to submit
+              {t("analyzer.keyHint")}
             </span>
             <button
               onClick={handleSubmit}
@@ -155,11 +160,11 @@ export default function AnalyzerPage() {
               {loading ? (
                 <>
                   <LoaderIcon className="w-4 h-4" />
-                  Analyzing…
+                  {t("analyzer.analyzing")}
                 </>
               ) : (
                 <>
-                  Analyze Case
+                  {t("analyzer.submit")}
                   <ArrowRightIcon className="w-4 h-4" />
                 </>
               )}
@@ -171,10 +176,10 @@ export default function AnalyzerPage() {
         {!result && !loading && (
           <div className="mt-8 animate-fade-in">
             <p className="text-xs text-ivory/25 mb-3 uppercase tracking-wider">
-              Try an example
+              {t("analyzer.tryExample")}
             </p>
             <div className="space-y-2">
-              {EXAMPLES.map((ex) => (
+              {examples.map((ex) => (
                 <button
                   key={ex}
                   onClick={() => handleExample(ex)}
@@ -224,7 +229,7 @@ export default function AnalyzerPage() {
                 }}
                 className="text-xs text-ivory/30 hover:text-gold-400 transition-colors underline underline-offset-4 cursor-pointer"
               >
-                Analyze another case
+                {t("analyzer.analyzeAnother")}
               </button>
             </div>
           </div>

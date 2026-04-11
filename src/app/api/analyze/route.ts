@@ -33,6 +33,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
   try {
     const body = await req.json();
     const input: string | undefined = body?.input;
+    const language: string = body?.language || "English";
 
     if (!input || typeof input !== "string" || input.trim().length === 0) {
       return NextResponse.json(
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
       );
     }
 
-    const analysis = await analyzeLegalCase(input);
+    const analysis = await analyzeLegalCase(input, language);
 
     return NextResponse.json({ success: true, data: analysis });
   } catch (err: unknown) {

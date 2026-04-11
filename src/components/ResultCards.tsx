@@ -4,6 +4,8 @@ import { useState } from "react";
 import type { LegalAnalysis, NoticeDetails } from "@/lib/types";
 import { downloadLegalNoticePdf } from "@/lib/generatePdf";
 import { downloadLegalNoticeDocument } from "@/lib/generateNoticePdf";
+import { useLanguage } from "@/i18n/LanguageContext";
+import { LANGUAGE_NAMES } from "@/i18n";
 import NoticeModal from "./NoticeModal";
 import {
   ScaleIcon,
@@ -20,6 +22,7 @@ interface Props {
 }
 
 export default function ResultCards({ data, onClarify }: Props) {
+  const { t, locale } = useLanguage();
   const [showNoticeModal, setShowNoticeModal] = useState(false);
   const [noticeLoading, setNoticeLoading] = useState(false);
 
@@ -33,17 +36,17 @@ export default function ResultCards({ data, onClarify }: Props) {
       const res = await fetch("/api/generate-notice", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ details, analysis: data }),
+        body: JSON.stringify({ details, analysis: data, language: LANGUAGE_NAMES[locale] }),
       });
       const json = await res.json();
       if (json.success) {
         downloadLegalNoticeDocument(json.data);
         setShowNoticeModal(false);
       } else {
-        alert(json.error || "Failed to generate legal notice.");
+        alert(json.error || t("common.failedNotice"));
       }
     } catch {
-      alert("Network error. Please try again.");
+      alert(t("common.networkErrorShort"));
     } finally {
       setNoticeLoading(false);
     }
@@ -53,7 +56,7 @@ export default function ResultCards({ data, onClarify }: Props) {
     <div className="space-y-4">
       <Card
         icon={<ScaleIcon className="w-5 h-5 text-gold-400" />}
-        title="Case Summary"
+        title={t("results.caseSummary")}
         stagger={1}
         accent="gold"
       >
@@ -64,7 +67,7 @@ export default function ResultCards({ data, onClarify }: Props) {
 
       <Card
         icon={<BookIcon className="w-5 h-5 text-legal-blue" />}
-        title="Case Type"
+        title={t("results.caseType")}
         stagger={2}
         accent="blue"
       >
@@ -85,7 +88,7 @@ export default function ResultCards({ data, onClarify }: Props) {
 
       <Card
         icon={<FileTextIcon className="w-5 h-5 text-ivory/60" />}
-        title="Jurisdiction Note"
+        title={t("results.jurisdiction")}
         stagger={3}
         accent="default"
       >
@@ -97,7 +100,7 @@ export default function ResultCards({ data, onClarify }: Props) {
       {data.applicable_laws.length > 0 && (
         <Card
           icon={<BookIcon className="w-5 h-5 text-legal-blue" />}
-          title="Applicable Laws"
+          title={t("results.applicableLaws")}
           stagger={4}
           accent="blue"
         >
@@ -115,7 +118,7 @@ export default function ResultCards({ data, onClarify }: Props) {
                 <p className="text-sm text-ivory/70 leading-relaxed mb-2">
                   {law.description}
                 </p>
-                <p className="text-[11px] uppercase text-ivory/40">Confidence: {law.confidence}</p>
+                <p className="text-[11px] uppercase text-ivory/40">{t("results.confidenceLabel")} {law.confidence}</p>
               </div>
             ))}
           </div>
@@ -125,7 +128,7 @@ export default function ResultCards({ data, onClarify }: Props) {
       {data.action_steps.length > 0 && (
         <Card
           icon={<CheckCircleIcon className="w-5 h-5 text-legal-green" />}
-          title="Action Steps"
+          title={t("results.actionSteps")}
           stagger={5}
           accent="green"
         >
@@ -139,7 +142,7 @@ export default function ResultCards({ data, onClarify }: Props) {
                   <span className="font-semibold text-ivory">{step.action}</span>
                 </div>
                 <p>{step.details}</p>
-                {step.timeline && <p className="text-[13px] text-ivory/50">Timeline: {step.timeline}</p>}
+                {step.timeline && <p className="text-[13px] text-ivory/50">{t("results.timeline")} {step.timeline}</p>}
               </li>
             ))}
           </ol>
@@ -148,16 +151,16 @@ export default function ResultCards({ data, onClarify }: Props) {
 
       <Card
         icon={<AlertIcon className="w-5 h-5 text-legal-red" />}
-        title="Time Sensitivity"
+        title={t("results.timeSensitivity")}
         stagger={6}
         accent="red"
       >
         <div className="space-y-2 text-sm text-ivory/75 leading-relaxed">
           <p>
-            <strong>Limitation period:</strong> {data.time_sensitivity.limitation_period || "Not specified"}
+            <strong>{t("results.limitationPeriod")}</strong> {data.time_sensitivity.limitation_period || "Not specified"}
           </p>
           <p>
-            <strong>Urgency:</strong> {data.time_sensitivity.urgency}
+            <strong>{t("results.urgency")}</strong> {data.time_sensitivity.urgency}
           </p>
           <p>{data.time_sensitivity.deadline_note}</p>
         </div>
@@ -165,35 +168,35 @@ export default function ResultCards({ data, onClarify }: Props) {
 
       <Card
         icon={<FileTextIcon className="w-5 h-5 text-ivory/60" />}
-        title="Possible Outcomes"
+        title={t("results.possibleOutcomes")}
         stagger={7}
         accent="default"
       >
         <div className="space-y-3 text-sm text-ivory/75 leading-relaxed">
           <p>
-            <strong>Best case:</strong> {data.possible_outcomes.best_case || "—"}
+            <strong>{t("results.bestCase")}</strong> {data.possible_outcomes.best_case || "\u2014"}
           </p>
           <p>
-            <strong>Likely case:</strong> {data.possible_outcomes.likely_case || "—"}
+            <strong>{t("results.likelyCase")}</strong> {data.possible_outcomes.likely_case || "\u2014"}
           </p>
           <p>
-            <strong>Worst case:</strong> {data.possible_outcomes.worst_case || "—"}
+            <strong>{t("results.worstCase")}</strong> {data.possible_outcomes.worst_case || "\u2014"}
           </p>
           <p>
-            <strong>Estimated timeline:</strong> {data.possible_outcomes.estimated_timeline || "—"}
+            <strong>{t("results.estTimeline")}</strong> {data.possible_outcomes.estimated_timeline || "\u2014"}
           </p>
         </div>
       </Card>
 
       <Card
         icon={<BookIcon className="w-5 h-5 text-legal-blue" />}
-        title="Required Documents"
+        title={t("results.requiredDocs")}
         stagger={8}
         accent="blue"
       >
         <div className="grid gap-4 sm:grid-cols-3 text-sm text-ivory/80">
           <div>
-            <p className="font-semibold text-ivory mb-2">Essential</p>
+            <p className="font-semibold text-ivory mb-2">{t("results.essential")}</p>
             <ul className="space-y-2">
               {data.required_documents.essential.map((item, index) => (
                 <li key={index} className="list-disc list-inside">{item}</li>
@@ -201,7 +204,7 @@ export default function ResultCards({ data, onClarify }: Props) {
             </ul>
           </div>
           <div>
-            <p className="font-semibold text-ivory mb-2">Supporting</p>
+            <p className="font-semibold text-ivory mb-2">{t("results.supporting")}</p>
             <ul className="space-y-2">
               {data.required_documents.supporting.map((item, index) => (
                 <li key={index} className="list-disc list-inside">{item}</li>
@@ -209,7 +212,7 @@ export default function ResultCards({ data, onClarify }: Props) {
             </ul>
           </div>
           <div>
-            <p className="font-semibold text-ivory mb-2">ID Proof</p>
+            <p className="font-semibold text-ivory mb-2">{t("results.idProof")}</p>
             <p>{data.required_documents.identity_proof}</p>
           </div>
         </div>
@@ -218,7 +221,7 @@ export default function ResultCards({ data, onClarify }: Props) {
       {data.filing_links.length > 0 && (
         <Card
           icon={<HelpCircleIcon className="w-5 h-5 text-legal-amber" />}
-          title="Filing Links"
+          title={t("results.filingLinks")}
           stagger={9}
           accent="amber"
         >
@@ -239,14 +242,14 @@ export default function ResultCards({ data, onClarify }: Props) {
       {data.helplines.length > 0 && (
         <Card
           icon={<HelpCircleIcon className="w-5 h-5 text-legal-amber" />}
-          title="Helplines"
+          title={t("results.helplines")}
           stagger={10}
           accent="amber"
         >
           <div className="space-y-3 text-sm text-ivory/80 leading-relaxed">
             {data.helplines.map((line, index) => (
               <div key={index}>
-                <p className="font-semibold text-ivory">{line.name || "Helpline"}</p>
+                <p className="font-semibold text-ivory">{line.name || t("results.helpline")}</p>
                 <p>{line.number}</p>
                 <p>{line.when_to_use}</p>
               </div>
@@ -257,19 +260,19 @@ export default function ResultCards({ data, onClarify }: Props) {
 
       <Card
         icon={<AlertIcon className="w-5 h-5 text-legal-red" />}
-        title="Estimated Costs"
+        title={t("results.estimatedCosts")}
         stagger={11}
         accent="red"
       >
         <div className="space-y-2 text-sm text-ivory/75 leading-relaxed">
           <p>
-            <strong>Court fees:</strong> {data.estimated_costs.court_fees || "—"}
+            <strong>{t("results.courtFees")}</strong> {data.estimated_costs.court_fees || "\u2014"}
           </p>
           <p>
-            <strong>Lawyer fees:</strong> {data.estimated_costs.lawyer_fees || "—"}
+            <strong>{t("results.lawyerFees")}</strong> {data.estimated_costs.lawyer_fees || "\u2014"}
           </p>
           <p>
-            <strong>Other:</strong> {data.estimated_costs.other || "—"}
+            <strong>{t("results.other")}</strong> {data.estimated_costs.other || "\u2014"}
           </p>
         </div>
       </Card>
@@ -277,7 +280,7 @@ export default function ResultCards({ data, onClarify }: Props) {
       {hasMissingInfo && (
         <Card
           icon={<HelpCircleIcon className="w-5 h-5 text-legal-amber" />}
-          title="Missing Information"
+          title={t("results.missingInfo")}
           stagger={12}
           accent="amber"
         >
@@ -291,7 +294,7 @@ export default function ResultCards({ data, onClarify }: Props) {
 
       <Card
         icon={<FileTextIcon className="w-5 h-5 text-ivory/60" />}
-        title="Confidence"
+        title={t("results.confidence")}
         stagger={13}
         accent="default"
       >
@@ -303,12 +306,12 @@ export default function ResultCards({ data, onClarify }: Props) {
       {hasClarifications && (
         <Card
           icon={<HelpCircleIcon className="w-5 h-5 text-legal-amber" />}
-          title="Need More Information"
+          title={t("results.needMoreInfo")}
           stagger={14}
           accent="amber"
         >
           <p className="text-xs text-ivory/50 mb-3">
-            Click a question to refine your query with additional details.
+            {t("results.clarifyHint")}
           </p>
           <div className="space-y-2">
             {data.clarifying_questions.map((q, i) => (
@@ -327,10 +330,7 @@ export default function ResultCards({ data, onClarify }: Props) {
 
       <div className="mt-6 px-4 py-3 rounded-lg border border-white/[0.04] bg-white/[0.015] animate-slide-up stagger-15">
         <p className="text-[11px] text-ivory/30 leading-relaxed text-center">
-          <strong className="text-ivory/40">Disclaimer:</strong> This analysis
-          is AI-generated and for informational purposes only. It does not
-          constitute legal advice. Consult a qualified lawyer for your specific
-          situation.
+          <strong className="text-ivory/40">{t("results.disclaimer")}</strong> {t("results.disclaimerText")}
         </p>
       </div>
 
@@ -354,7 +354,7 @@ export default function ResultCards({ data, onClarify }: Props) {
             <line x1="16" y1="17" x2="8" y2="17" />
             <polyline points="10 9 9 9 8 9" />
           </svg>
-          Generate Legal Notice
+          {t("results.generateNotice")}
         </button>
         <button
           onClick={() => downloadLegalNoticePdf(data)}
@@ -372,7 +372,7 @@ export default function ResultCards({ data, onClarify }: Props) {
             <polyline points="7 10 12 15 17 10" />
             <line x1="12" y1="15" x2="12" y2="3" />
           </svg>
-          Download Analysis PDF
+          {t("results.downloadPdf")}
         </button>
       </div>
 
@@ -417,7 +417,7 @@ function Card({
   return (
     <div
       className={`
-        rounded-xl bg-ink/50 backdrop-blur-sm border p-5 
+        rounded-xl bg-ink/50 backdrop-blur-sm border p-5
         transition-colors duration-300
         opacity-0 animate-slide-up stagger-${stagger}
         ${accentMap[accent]}

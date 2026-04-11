@@ -24,7 +24,7 @@ function toSafeMessage(message: string): string {
 export async function POST(req: NextRequest): Promise<NextResponse<NoticeApiResponse>> {
   try {
     const body = await req.json();
-    const { details, analysis } = body ?? {};
+    const { details, analysis, language = "English" } = body ?? {};
 
     // Validate details
     if (!details) {
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<NoticeApiResp
       );
     }
 
-    const notice = await generateLegalNotice(details, analysis);
+    const notice = await generateLegalNotice(details, analysis, language);
 
     return NextResponse.json({ success: true, data: notice });
   } catch (err: unknown) {

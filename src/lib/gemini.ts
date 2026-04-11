@@ -254,7 +254,8 @@ function parseModelResponse(text: string): LegalAnalysis {
 }
 
 export async function analyzeLegalCase(
-  userInput: string
+  userInput: string,
+  language: string = "English"
 ): Promise<LegalAnalysis> {
   // Collect all available API keys
   const apiKeys: string[] = [];
@@ -284,7 +285,7 @@ export async function analyzeLegalCase(
 
       const chatCompletion = await groq.chat.completions.create({
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: SYSTEM_PROMPT + (language !== "English" ? `\n\nIMPORTANT: Respond entirely in ${language}. All text values in the JSON must be in ${language}, except for act names and section numbers which should remain in English.` : "") },
           { role: "user", content: `User's legal situation:\n${sanitized}` },
         ],
         model: "llama-3.1-8b-instant",
@@ -407,7 +408,8 @@ function parseLegalNoticeResponse(text: string): Omit<LegalNoticeContent, "date"
 
 export async function generateLegalNotice(
   details: NoticeDetails,
-  analysis: LegalAnalysis
+  analysis: LegalAnalysis,
+  language: string = "English"
 ): Promise<LegalNoticeContent> {
   const apiKeys: string[] = [];
   for (let i = 1; ; i++) {
@@ -425,7 +427,7 @@ export async function generateLegalNotice(
     .map((l) => `- ${l.act} [Sections ${l.sections.join(", ")}]: ${l.description}`)
     .join("\n");
 
-  const systemPrompt = buildNoticePrompt(details);
+  const systemPrompt = buildNoticePrompt(details) + (language !== "English" ? `\n\nIMPORTANT: Draft the entire legal notice in ${language}. All text values in the JSON must be in ${language}, except for act names and section numbers which should remain in English.` : "");
 
   const userMessage = `Draft a formal Indian legal notice:
 

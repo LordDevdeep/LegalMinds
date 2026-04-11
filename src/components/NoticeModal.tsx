@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { NoticeDetails, Gender, NoticeRole, LegalAnalysis, CompensationSuggestion } from "@/lib/types";
 import { LoaderIcon } from "./Icons";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 interface NoticeModalProps {
   open: boolean;
@@ -18,32 +19,22 @@ function todayStr() {
 }
 
 export default function NoticeModal({ open, onClose, onGenerate, loading, analysis }: NoticeModalProps) {
-  // Role
-  const [role, setRole] = useState<NoticeRole>("individual");
+  const { t } = useLanguage();
 
-  // Sender
+  const [role, setRole] = useState<NoticeRole>("individual");
   const [senderName, setSenderName] = useState("");
   const [senderAddress, setSenderAddress] = useState("");
   const [senderGender, setSenderGender] = useState<Gender>("male");
-
-  // Recipient
   const [recipientName, setRecipientName] = useState("");
   const [recipientAddress, setRecipientAddress] = useState("");
   const [recipientGender, setRecipientGender] = useState<Gender>("male");
-
-  // Notice details
   const [noticeDate, setNoticeDate] = useState(todayStr());
   const [incidentDate, setIncidentDate] = useState("");
   const [incidentLocation, setIncidentLocation] = useState("");
-
-  // Compensation & demand
   const [compensationAmount, setCompensationAmount] = useState("");
   const [specificDemand, setSpecificDemand] = useState("");
-
-  // AI suggestion
   const [suggestion, setSuggestion] = useState<CompensationSuggestion | null>(null);
   const [suggestionLoading, setSuggestionLoading] = useState(false);
-
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const firstInputRef = useRef<HTMLInputElement>(null);
 
@@ -72,9 +63,7 @@ export default function NoticeModal({ open, onClose, onGenerate, loading, analys
         body: JSON.stringify({ analysis }),
       });
       const json = await res.json();
-      if (json.success) {
-        setSuggestion(json.data);
-      }
+      if (json.success) setSuggestion(json.data);
     } catch {
       // silently fail
     } finally {
@@ -136,19 +125,16 @@ export default function NoticeModal({ open, onClose, onGenerate, loading, analys
       onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}
     >
       <div className="w-full max-w-xl rounded-xl bg-ink border border-white/[0.06] p-6 shadow-2xl animate-scale-in mb-10">
-        {/* Header */}
-        <h2 className="font-display text-xl text-ivory mb-1">Generate Legal Notice</h2>
-        <p className="text-xs text-ivory/40 mb-5">
-          Fill in all details below. The AI will draft a formal, court-ready legal notice.
-        </p>
+        <h2 className="font-display text-xl text-ivory mb-1">{t("notice.title")}</h2>
+        <p className="text-xs text-ivory/40 mb-5">{t("notice.instruction")}</p>
 
         {/* ── Role ── */}
         <div className="mb-5">
-          <p className="text-sm font-semibold text-gold-400 mb-3">Who is sending this notice?</p>
+          <p className="text-sm font-semibold text-gold-400 mb-3">{t("notice.whoSending")}</p>
           <div className="flex gap-3">
             {([
-              { value: "individual" as NoticeRole, label: "As an Individual (self)" },
-              { value: "lawyer" as NoticeRole, label: "As a Lawyer (on behalf of client)" },
+              { value: "individual" as NoticeRole, label: t("notice.roleIndividual") },
+              { value: "lawyer" as NoticeRole, label: t("notice.roleLawyer") },
             ]).map((opt) => (
               <button
                 key={opt.value}
@@ -172,40 +158,25 @@ export default function NoticeModal({ open, onClose, onGenerate, loading, analys
         {/* ── Sender ── */}
         <div className="mb-5">
           <p className="text-sm font-semibold text-gold-400 mb-3">
-            {role === "lawyer" ? "Client Details (Sender)" : "Your Details (Sender)"}
+            {role === "lawyer" ? t("notice.senderClient") : t("notice.senderYou")}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2">
-              <label className={labelCls}>Full Name *</label>
-              <input
-                ref={firstInputRef}
-                type="text"
-                placeholder="Full Name"
-                value={senderName}
-                onChange={(e) => { setSenderName(e.target.value); setErrors((p) => ({ ...p, senderName: false })); }}
-                disabled={loading}
-                className={inputCls("senderName")}
-              />
-              {errors.senderName && <p className="text-[11px] text-legal-red mt-1">Required</p>}
+              <label className={labelCls}>{t("notice.fullName")}</label>
+              <input ref={firstInputRef} type="text" placeholder={t("notice.namePlaceholder")} value={senderName} onChange={(e) => { setSenderName(e.target.value); setErrors((p) => ({ ...p, senderName: false })); }} disabled={loading} className={inputCls("senderName")} />
+              {errors.senderName && <p className="text-[11px] text-legal-red mt-1">{t("common.required")}</p>}
             </div>
             <div className="sm:col-span-2">
-              <label className={labelCls}>Full Address *</label>
-              <textarea
-                rows={2}
-                placeholder="Address (city, state, PIN)"
-                value={senderAddress}
-                onChange={(e) => { setSenderAddress(e.target.value); setErrors((p) => ({ ...p, senderAddress: false })); }}
-                disabled={loading}
-                className={inputCls("senderAddress") + " resize-none"}
-              />
-              {errors.senderAddress && <p className="text-[11px] text-legal-red mt-1">Required</p>}
+              <label className={labelCls}>{t("notice.fullAddress")}</label>
+              <textarea rows={2} placeholder={t("notice.addressPlaceholder")} value={senderAddress} onChange={(e) => { setSenderAddress(e.target.value); setErrors((p) => ({ ...p, senderAddress: false })); }} disabled={loading} className={inputCls("senderAddress") + " resize-none"} />
+              {errors.senderAddress && <p className="text-[11px] text-legal-red mt-1">{t("common.required")}</p>}
             </div>
             <div>
-              <label className={labelCls}>Gender</label>
+              <label className={labelCls}>{t("notice.gender")}</label>
               <select value={senderGender} onChange={(e) => setSenderGender(e.target.value as Gender)} disabled={loading} className={selectCls("senderGender")}>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
+                <option value="male">{t("notice.male")}</option>
+                <option value="female">{t("notice.female")}</option>
+                <option value="other">{t("notice.other")}</option>
               </select>
             </div>
           </div>
@@ -213,38 +184,24 @@ export default function NoticeModal({ open, onClose, onGenerate, loading, analys
 
         {/* ── Recipient ── */}
         <div className="mb-5">
-          <p className="text-sm font-semibold text-gold-400 mb-3">Recipient Details (Noticee)</p>
+          <p className="text-sm font-semibold text-gold-400 mb-3">{t("notice.recipientDetails")}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="sm:col-span-2">
-              <label className={labelCls}>Full Name *</label>
-              <input
-                type="text"
-                placeholder="Full Name"
-                value={recipientName}
-                onChange={(e) => { setRecipientName(e.target.value); setErrors((p) => ({ ...p, recipientName: false })); }}
-                disabled={loading}
-                className={inputCls("recipientName")}
-              />
-              {errors.recipientName && <p className="text-[11px] text-legal-red mt-1">Required</p>}
+              <label className={labelCls}>{t("notice.fullName")}</label>
+              <input type="text" placeholder={t("notice.namePlaceholder")} value={recipientName} onChange={(e) => { setRecipientName(e.target.value); setErrors((p) => ({ ...p, recipientName: false })); }} disabled={loading} className={inputCls("recipientName")} />
+              {errors.recipientName && <p className="text-[11px] text-legal-red mt-1">{t("common.required")}</p>}
             </div>
             <div className="sm:col-span-2">
-              <label className={labelCls}>Full Address *</label>
-              <textarea
-                rows={2}
-                placeholder="Address (city, state, PIN)"
-                value={recipientAddress}
-                onChange={(e) => { setRecipientAddress(e.target.value); setErrors((p) => ({ ...p, recipientAddress: false })); }}
-                disabled={loading}
-                className={inputCls("recipientAddress") + " resize-none"}
-              />
-              {errors.recipientAddress && <p className="text-[11px] text-legal-red mt-1">Required</p>}
+              <label className={labelCls}>{t("notice.fullAddress")}</label>
+              <textarea rows={2} placeholder={t("notice.addressPlaceholder")} value={recipientAddress} onChange={(e) => { setRecipientAddress(e.target.value); setErrors((p) => ({ ...p, recipientAddress: false })); }} disabled={loading} className={inputCls("recipientAddress") + " resize-none"} />
+              {errors.recipientAddress && <p className="text-[11px] text-legal-red mt-1">{t("common.required")}</p>}
             </div>
             <div>
-              <label className={labelCls}>Gender</label>
+              <label className={labelCls}>{t("notice.gender")}</label>
               <select value={recipientGender} onChange={(e) => setRecipientGender(e.target.value as Gender)} disabled={loading} className={selectCls("recipientGender")}>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
+                <option value="male">{t("notice.male")}</option>
+                <option value="female">{t("notice.female")}</option>
+                <option value="other">{t("notice.other")}</option>
               </select>
             </div>
           </div>
@@ -252,130 +209,68 @@ export default function NoticeModal({ open, onClose, onGenerate, loading, analys
 
         {/* ── Notice Details ── */}
         <div className="mb-5">
-          <p className="text-sm font-semibold text-gold-400 mb-3">Notice & Incident Details</p>
+          <p className="text-sm font-semibold text-gold-400 mb-3">{t("notice.incidentDetails")}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className={labelCls}>Notice Date *</label>
-              <input
-                type="text"
-                placeholder="DD/MM/YYYY"
-                value={noticeDate}
-                onChange={(e) => { setNoticeDate(e.target.value); setErrors((p) => ({ ...p, noticeDate: false })); }}
-                disabled={loading}
-                className={inputCls("noticeDate")}
-              />
-              {errors.noticeDate && <p className="text-[11px] text-legal-red mt-1">Required</p>}
+              <label className={labelCls}>{t("notice.noticeDate")}</label>
+              <input type="text" placeholder={t("notice.datePlaceholder")} value={noticeDate} onChange={(e) => { setNoticeDate(e.target.value); setErrors((p) => ({ ...p, noticeDate: false })); }} disabled={loading} className={inputCls("noticeDate")} />
+              {errors.noticeDate && <p className="text-[11px] text-legal-red mt-1">{t("common.required")}</p>}
             </div>
             <div>
-              <label className={labelCls}>Incident Date *</label>
-              <input
-                type="text"
-                placeholder="DD/MM/YYYY"
-                value={incidentDate}
-                onChange={(e) => { setIncidentDate(e.target.value); setErrors((p) => ({ ...p, incidentDate: false })); }}
-                disabled={loading}
-                className={inputCls("incidentDate")}
-              />
-              {errors.incidentDate && <p className="text-[11px] text-legal-red mt-1">Required</p>}
+              <label className={labelCls}>{t("notice.incidentDate")}</label>
+              <input type="text" placeholder={t("notice.datePlaceholder")} value={incidentDate} onChange={(e) => { setIncidentDate(e.target.value); setErrors((p) => ({ ...p, incidentDate: false })); }} disabled={loading} className={inputCls("incidentDate")} />
+              {errors.incidentDate && <p className="text-[11px] text-legal-red mt-1">{t("common.required")}</p>}
             </div>
             <div className="sm:col-span-2">
-              <label className={labelCls}>Incident Location *</label>
-              <input
-                type="text"
-                placeholder="City / Place where the incident occurred"
-                value={incidentLocation}
-                onChange={(e) => { setIncidentLocation(e.target.value); setErrors((p) => ({ ...p, incidentLocation: false })); }}
-                disabled={loading}
-                className={inputCls("incidentLocation")}
-              />
-              {errors.incidentLocation && <p className="text-[11px] text-legal-red mt-1">Required</p>}
+              <label className={labelCls}>{t("notice.incidentLocation")}</label>
+              <input type="text" placeholder={t("notice.locationPlaceholder")} value={incidentLocation} onChange={(e) => { setIncidentLocation(e.target.value); setErrors((p) => ({ ...p, incidentLocation: false })); }} disabled={loading} className={inputCls("incidentLocation")} />
+              {errors.incidentLocation && <p className="text-[11px] text-legal-red mt-1">{t("common.required")}</p>}
             </div>
           </div>
         </div>
 
         {/* ── Compensation & Demand ── */}
         <div className="mb-6">
-          <p className="text-sm font-semibold text-gold-400 mb-3">Compensation & Demand</p>
+          <p className="text-sm font-semibold text-gold-400 mb-3">{t("notice.compensation")}</p>
           <div className="space-y-3">
             <div>
-              <label className={labelCls}>Compensation Amount (Rs.)</label>
+              <label className={labelCls}>{t("notice.compAmount")}</label>
               <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="e.g. 5,00,000 (leave blank if not applicable)"
-                  value={compensationAmount}
-                  onChange={(e) => setCompensationAmount(e.target.value)}
-                  disabled={loading}
-                  className={inputCls("compensationAmount")}
-                />
-                <button
-                  type="button"
-                  onClick={handleSuggestCompensation}
-                  disabled={loading || suggestionLoading}
-                  className="
-                    shrink-0 px-3 py-2.5 rounded-lg text-xs font-semibold
-                    bg-legal-blue/15 border border-legal-blue/25 text-legal-blue
-                    hover:bg-legal-blue/25 transition-all duration-200
-                    disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer
-                    whitespace-nowrap
-                  "
-                >
-                  {suggestionLoading ? "..." : "AI Suggest"}
+                <input type="text" placeholder={t("notice.compPlaceholder")} value={compensationAmount} onChange={(e) => setCompensationAmount(e.target.value)} disabled={loading} className={inputCls("compensationAmount")} />
+                <button type="button" onClick={handleSuggestCompensation} disabled={loading || suggestionLoading} className="shrink-0 px-3 py-2.5 rounded-lg text-xs font-semibold bg-legal-blue/15 border border-legal-blue/25 text-legal-blue hover:bg-legal-blue/25 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap">
+                  {suggestionLoading ? "..." : t("notice.aiSuggest")}
                 </button>
               </div>
               {suggestion && (
                 <div className="mt-2 px-3 py-2 rounded-lg bg-legal-blue/10 border border-legal-blue/20 text-xs">
                   <p className="text-legal-blue font-semibold mb-1">
-                    Suggested Range: Rs. {suggestion.min} — Rs. {suggestion.max}
+                    {t("notice.suggestedRange")} {suggestion.min} — ₹ {suggestion.max}
                   </p>
                   <p className="text-ivory/50">{suggestion.reasoning}</p>
                 </div>
               )}
             </div>
             <div>
-              <label className={labelCls}>Specific Demand / Relief Sought *</label>
-              <textarea
-                rows={3}
-                placeholder="Describe exactly what you want the recipient to do (e.g. return security deposit of Rs. 2,00,000, issue full and final settlement, vacate the premises...)"
-                value={specificDemand}
-                onChange={(e) => { setSpecificDemand(e.target.value); setErrors((p) => ({ ...p, specificDemand: false })); }}
-                disabled={loading}
-                className={inputCls("specificDemand") + " resize-none"}
-              />
-              {errors.specificDemand && <p className="text-[11px] text-legal-red mt-1">Required</p>}
+              <label className={labelCls}>{t("notice.specificDemand")}</label>
+              <textarea rows={3} placeholder={t("notice.demandPlaceholder")} value={specificDemand} onChange={(e) => { setSpecificDemand(e.target.value); setErrors((p) => ({ ...p, specificDemand: false })); }} disabled={loading} className={inputCls("specificDemand") + " resize-none"} />
+              {errors.specificDemand && <p className="text-[11px] text-legal-red mt-1">{t("common.required")}</p>}
             </div>
           </div>
         </div>
 
         {/* ── Actions ── */}
         <div className="flex items-center justify-end gap-3">
-          <button
-            onClick={onClose}
-            disabled={loading}
-            className="px-5 py-2.5 rounded-lg text-sm text-ivory/40 hover:text-ivory/60 transition-colors disabled:opacity-50 cursor-pointer"
-          >
-            Cancel
+          <button onClick={onClose} disabled={loading} className="px-5 py-2.5 rounded-lg text-sm text-ivory/40 hover:text-ivory/60 transition-colors disabled:opacity-50 cursor-pointer">
+            {t("common.cancel")}
           </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="
-              flex items-center gap-2.5 px-6 py-2.5 rounded-xl
-              bg-gold-500 hover:bg-gold-400 disabled:bg-gold-500/30
-              text-midnight font-semibold text-sm tracking-wide
-              transition-all duration-200
-              shadow-lg shadow-gold-500/20 hover:shadow-gold-400/30
-              disabled:shadow-none disabled:cursor-not-allowed
-              cursor-pointer
-            "
-          >
+          <button onClick={handleSubmit} disabled={loading} className="flex items-center gap-2.5 px-6 py-2.5 rounded-xl bg-gold-500 hover:bg-gold-400 disabled:bg-gold-500/30 text-midnight font-semibold text-sm tracking-wide transition-all duration-200 shadow-lg shadow-gold-500/20 hover:shadow-gold-400/30 disabled:shadow-none disabled:cursor-not-allowed cursor-pointer">
             {loading ? (
               <>
                 <LoaderIcon className="w-4 h-4" />
-                Generating…
+                {t("notice.generating")}
               </>
             ) : (
-              "Generate Legal Notice"
+              t("notice.generateBtn")
             )}
           </button>
         </div>
