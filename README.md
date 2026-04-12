@@ -1,12 +1,19 @@
 # LegalMinds — AI-Powered Legal Analysis for Indian Law
 
-A production-ready Next.js application that accepts a legal problem description and returns structured legal guidance using Groq AI.
+A production-ready Next.js application that analyzes legal situations, generates court-ready legal notices, and provides structured legal guidance using AI.
+
+**Live:** [legalminds-sepia.vercel.app](https://legalminds-sepia.vercel.app)
 
 ## Features
 
-- **Case Analyzer** — Describe any legal situation and get structured analysis
-- **Structured Output** — Legal category, applicable laws, explanation, penalties, recommended actions
-- **Clarification System** — If your input is vague, the AI asks targeted follow-up questions
+- **Case Analyzer** — Describe any legal situation and get detailed structured analysis with applicable laws, penalties, action steps, timelines, and estimated costs
+- **Legal Notice Generator** — Generate professional, court-submittable legal notices with sender/recipient details, incident info, compensation, and formal legal language
+- **AI Compensation Suggestion** — Get AI-recommended compensation ranges based on case type and Indian court precedents
+- **PDF Download** — Download analysis reports and legal notices as properly formatted A4 PDFs with Indic script support
+- **Bilingual Support** — Full UI in English and Hindi with translated headings, labels, buttons, and placeholders
+- **Hindi AI Responses** — When Hindi is selected, AI generates analysis entirely in simple Hindustani (everyday Hindi)
+- **Multi-API Key Failover** — Supports multiple Groq API keys with automatic rotation on rate limits or errors
+- **Auto-Retry** — Frontend automatically retries failed requests for reliability
 - **Dark UI** — Professional, accessible interface with smooth animations
 
 ## Tech Stack
@@ -15,7 +22,9 @@ A production-ready Next.js application that accepts a legal problem description 
 | -------- | --------------------------------- |
 | Frontend | Next.js 14 (App Router), TypeScript, Tailwind CSS |
 | Backend  | Next.js API Routes, TypeScript    |
-| AI       | Groq Llama 3.1 8B Instant         |
+| AI       | Groq API (Llama 3.1 8B Instant)   |
+| PDF      | html2pdf.js (browser-native font rendering) |
+| i18n     | React Context + TypeScript translation files (zero dependencies) |
 
 ## Folder Structure
 
@@ -23,28 +32,44 @@ A production-ready Next.js application that accepts a legal problem description 
 legalminds/
 ├── src/
 │   ├── app/
-│   │   ├── layout.tsx            # Root layout + metadata
-│   │   ├── globals.css           # Tailwind + custom styles
-│   │   ├── page.tsx              # Home / landing page
+│   │   ├── layout.tsx              # Root layout + metadata + LanguageProvider
+│   │   ├── globals.css             # Tailwind + custom styles
+│   │   ├── page.tsx                # Home / landing page
 │   │   ├── analyzer/
-│   │   │   └── page.tsx          # Main analyzer page
+│   │   │   └── page.tsx            # Main analyzer page
 │   │   └── api/
-│   │       └── analyze/
-│   │           └── route.ts      # POST endpoint for analysis
+│   │       ├── analyze/
+│   │       │   └── route.ts        # POST — case analysis
+│   │       ├── generate-notice/
+│   │       │   └── route.ts        # POST — legal notice generation
+│   │       └── suggest-compensation/
+│   │           └── route.ts        # POST — AI compensation suggestion
+│   ├── i18n/
+│   │   ├── index.ts                # Locale registry + translation lookup
+│   │   ├── LanguageContext.tsx      # React context (locale, setLocale, t())
+│   │   └── locales/
+│   │       ├── en.ts               # English translations (70+ keys)
+│   │       └── hi.ts               # Hindi translations
 │   ├── lib/
-│   │   ├── gemini.ts             # Gemini API integration + parsing
-│   │   └── types.ts              # TypeScript interfaces
+│   │   ├── gemini.ts               # Groq API integration + prompts
+│   │   ├── generatePdf.ts          # Analysis PDF generator (html2pdf.js)
+│   │   ├── generateNoticePdf.ts    # Legal notice PDF generator
+│   │   ├── types.ts                # TypeScript interfaces
+│   │   └── html2pdf.d.ts           # Type declarations for html2pdf.js
 │   └── components/
-│       ├── Icons.tsx             # SVG icon components
-│       ├── LoadingSkeleton.tsx   # Shimmer loading state
-│       └── ResultCards.tsx       # Structured result display
+│       ├── Icons.tsx               # SVG icon components
+│       ├── LanguageSelector.tsx     # Language dropdown (English/Hindi)
+│       ├── LoadingSkeleton.tsx      # Shimmer loading state
+│       ├── NoticeModal.tsx          # Legal notice form modal
+│       └── ResultCards.tsx          # Structured result display + PDF/notice buttons
 ├── public/
-├── .env.example                  # Environment variable template
+│   ├── logo.png                    # Full logo
+│   ├── logo-icon.png               # Icon-only logo
+│   └── favicon.png                 # Browser tab icon
 ├── .gitignore
 ├── next.config.js
 ├── tailwind.config.ts
 ├── tsconfig.json
-├── postcss.config.js
 ├── package.json
 └── README.md
 ```
@@ -53,116 +78,111 @@ legalminds/
 
 ### Prerequisites
 
-- **Node.js** 18+ installed
-- A **Google Gemini API key** (free tier available)
+- **Node.js** 18+
+- One or more **Groq API keys** (free at [console.groq.com](https://console.groq.com))
 
-### 1. Get your Gemini API key
-
-1. Go to [https://aistudio.google.com/apikey](https://aistudio.google.com/apikey)
-2. Click "Create API Key"
-3. Copy the key
-
-### 2. Clone / extract the project
+### 1. Clone & install
 
 ```bash
-cd legalminds
-```
-
-### 3. Install dependencies
-
-```bash
+git clone https://github.com/LordDevdeep/LegalMinds.git
+cd LegalMinds
 npm install
 ```
 
-### 4. Configure environment
+### 2. Configure environment
 
-```bash
-cp .env.example .env.local
-```
-
-Open `.env.local` and replace the placeholder with your actual key:
+Create `.env.local`:
 
 ```
-GEMINI_API_KEY=your_actual_gemini_api_key
+GROQ_API_KEY_1=gsk_your_first_key
+GROQ_API_KEY_2=gsk_your_second_key
+GROQ_API_KEY_3=gsk_your_third_key
 ```
 
-### 5. Run the development server
+You can add up to any number of keys. The app tries them in sequence — if one hits a rate limit, it automatically uses the next.
+
+### 3. Run
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000).
 
-### 6. Production build
+### 4. Production build
 
 ```bash
 npm run build
 npm start
 ```
 
-## How It Works
-
-1. User describes their legal situation on the `/analyzer` page
-2. Frontend sends a `POST` request to `/api/analyze` with the input text
-3. Backend sanitizes the input (strips control characters, enforces length limit)
-4. Backend calls Google Gemini with a structured legal analysis prompt
-5. Gemini returns JSON with legal category, applicable laws, penalties, etc.
-6. Backend validates and parses the response
-7. Frontend renders the structured result in categorized cards
-8. If the AI needs more info, clarification questions are shown as clickable buttons
-
-## API Reference
+## API Endpoints
 
 ### `POST /api/analyze`
 
-**Request body:**
+Analyzes a legal situation and returns structured guidance.
+
+**Request:**
 ```json
 {
-  "input": "My landlord is refusing to return my security deposit..."
+  "input": "My landlord is refusing to return my security deposit...",
+  "language": "English"
 }
 ```
 
-**Success response (200):**
+### `POST /api/generate-notice`
+
+Generates a formal legal notice (always in English).
+
+**Request:**
 ```json
 {
-  "success": true,
-  "data": {
-    "legal_category": "Civil / Property Law",
-    "applicable_laws": ["Transfer of Property Act, 1882 — Section 108(m)", "..."],
-    "explanation": "Under Indian law, the landlord is obligated to...",
-    "possible_penalties": "The landlord may be liable to...",
-    "recommended_actions": ["Send a legal notice...", "File a complaint..."],
-    "clarification_questions": []
-  }
+  "details": {
+    "role": "individual",
+    "senderName": "...",
+    "senderAddress": "...",
+    "senderGender": "male",
+    "recipientName": "...",
+    "recipientAddress": "...",
+    "recipientGender": "male",
+    "noticeDate": "11/04/2026",
+    "incidentDate": "01/01/2026",
+    "incidentLocation": "Mumbai",
+    "compensationAmount": "5,00,000",
+    "specificDemand": "Return security deposit"
+  },
+  "analysis": { ... },
+  "language": "English"
 }
 ```
 
-**Error response (400/500):**
+### `POST /api/suggest-compensation`
+
+Returns AI-suggested compensation range.
+
+**Request:**
 ```json
 {
-  "success": false,
-  "error": "Please describe your legal situation."
+  "analysis": { ... },
+  "language": "Hindi"
 }
 ```
 
-## Security
-
-- API key is stored in `.env.local` — never committed to version control
-- User input is sanitized server-side (control chars stripped, length capped at 5000)
-- API key is never exposed to the frontend
-- Error messages are sanitized before returning to the client
-
-## Deployment
-
-Works out of the box on **Vercel**:
+## Deployment (Vercel)
 
 1. Push to GitHub
 2. Import into Vercel
-3. Add `GEMINI_API_KEY` as an environment variable in Vercel project settings
+3. Add environment variables: `GROQ_API_KEY_1`, `GROQ_API_KEY_2`, etc.
 4. Deploy
 
-Also works on any Node.js hosting (Railway, Render, AWS, etc.) — just set the environment variable and run `npm run build && npm start`.
+Also works on any Node.js hosting — set the environment variables and run `npm run build && npm start`.
+
+## Security
+
+- API keys stored in environment variables — never committed to version control
+- User input sanitized server-side (control chars stripped, length capped at 5000)
+- API keys never exposed to the frontend
+- Error messages sanitized before returning to client
 
 ## Disclaimer
 
