@@ -55,6 +55,13 @@ export default function ResultCards({ data, onClarify }: Props) {
 
   return (
     <div className="space-y-4">
+      {/* Warning banner */}
+      <div className="px-4 py-3 rounded-xl bg-legal-amber/10 border border-legal-amber/20 animate-fade-in">
+        <p className="text-xs text-legal-amber text-center font-medium">
+          AI-generated information — may contain errors. Verify all citations with official sources.
+        </p>
+      </div>
+
       <Card
         icon={<ScaleIcon className="w-5 h-5 text-gold-400" />}
         title={t("results.caseSummary")}
@@ -333,6 +340,31 @@ export default function ResultCards({ data, onClarify }: Props) {
         <p className="text-[11px] text-ivory/30 leading-relaxed text-center">
           <strong className="text-ivory/40">{t("results.disclaimer")}</strong> {t("results.disclaimerText")}
         </p>
+      </div>
+
+      {/* Consult a Lawyer CTA */}
+      <div className="mt-3 px-4 py-4 rounded-xl border border-legal-green/15 bg-legal-green/5 animate-slide-up stagger-15">
+        <p className="text-xs text-ivory/50 text-center mb-3">
+          Always consult a qualified advocate before taking legal action.
+        </p>
+        <div className="flex flex-wrap justify-center gap-3">
+          <a
+            href="https://www.barcouncilofindia.org/"
+            target="_blank"
+            rel="noreferrer"
+            className="px-4 py-2 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:border-legal-green/30 text-xs text-ivory/60 hover:text-ivory transition-all duration-200"
+          >
+            Bar Council of India
+          </a>
+          <a
+            href="https://nalsa.gov.in/"
+            target="_blank"
+            rel="noreferrer"
+            className="px-4 py-2 rounded-lg bg-white/[0.04] border border-white/[0.06] hover:border-legal-green/30 text-xs text-ivory/60 hover:text-ivory transition-all duration-200"
+          >
+            NALSA (Free Legal Aid)
+          </a>
+        </div>
       </div>
 
       {/* Action buttons */}

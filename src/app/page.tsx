@@ -93,8 +93,16 @@ export default function HomePage() {
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 text-center py-6 text-[11px] text-ivory/20">
-        {t("home.footer")}
+      <footer className="relative z-10 text-center py-6 space-y-2">
+        <p className="text-[11px] text-ivory/20">
+          This tool provides legal information, not legal advice.
+        </p>
+        <div className="flex items-center justify-center gap-4 text-[10px] text-ivory/15">
+          <Link href="/terms" className="hover:text-ivory/40 transition-colors">Terms of Service</Link>
+          <span>|</span>
+          <Link href="/privacy" className="hover:text-ivory/40 transition-colors">Privacy Policy</Link>
+        </div>
+        <p className="text-[10px] text-ivory/10">&copy; 2025 LegalMinds. All rights reserved.</p>
       </footer>
     </div>
   );

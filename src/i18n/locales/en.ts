@@ -4,13 +4,13 @@ const en = {
   "home.badge": "AI-Powered Legal Analysis",
   "home.heading1": "Understand Indian Law",
   "home.heading2": "in Plain Language",
-  "home.description": "Describe your legal situation and get structured guidance — applicable laws, possible penalties, and recommended next steps.",
+  "home.description": "Describe your legal situation and understand applicable laws, possible penalties, and recommended next steps.",
   "home.cta": "Start Analysis",
   "home.chip1": "Criminal & Civil Law",
   "home.chip2": "IPC & CrPC Sections",
   "home.chip3": "Consumer Protection",
   "home.chip4": "Labour Law",
-  "home.footer": "AI-generated analysis for informational purposes only — not legal advice.",
+  "home.footer": "AI-generated information for educational purposes only — not a substitute for professional legal counsel.",
 
   // Analyzer page
   "analyzer.heading": "Case Analyzer",
