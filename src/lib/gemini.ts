@@ -13,6 +13,7 @@ import type {
   Helpline,
   EstimatedCosts,
 } from "./types";
+import { getLinksForCaseType, getHelplines } from "./filingLinks";
 
 /* ── Hindi language instruction (compact) ── */
 
@@ -320,7 +321,11 @@ export async function analyzeLegalCase(
         throw new Error("The AI model returned an empty response. Please retry.");
       }
 
-      return parseModelResponse(response);
+      const result = parseModelResponse(response);
+      // Override AI-generated links with verified, working links
+      result.filing_links = getLinksForCaseType(result.case_type);
+      result.helplines = getHelplines(result.case_type);
+      return result;
     } catch (error) {
       const err = error as Error;
       lastError = err;
