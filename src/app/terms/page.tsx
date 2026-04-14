@@ -7,7 +7,7 @@ import LanguageSelector from "@/components/LanguageSelector";
 export default function TermsPage() {
   return (
     <div className="relative min-h-screen">
-      <nav className="relative z-10 flex items-center justify-between px-6 md:px-12 py-5 border-b border-white/[0.04]">
+      <nav className="relative z-50 flex items-center justify-between px-6 md:px-12 py-5 border-b border-white/[0.04]">
         <Link href="/" className="flex items-center gap-2.5 group">
           <Image src="/logo-icon.png" alt="LegalMinds" width={36} height={36} className="h-9 w-9" />
           <span className="font-display text-lg tracking-tight">

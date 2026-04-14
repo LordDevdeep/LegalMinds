@@ -6,10 +6,12 @@ import type { LegalAnalysis, ApiResponse } from "@/lib/types";
 import Image from "next/image";
 import { ArrowRightIcon, LoaderIcon } from "@/components/Icons";
 import LanguageSelector from "@/components/LanguageSelector";
+import AuthButton from "@/components/AuthButton";
 import LoadingSkeleton from "@/components/LoadingSkeleton";
 import ResultCards from "@/components/ResultCards";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { LANGUAGE_NAMES } from "@/i18n";
+import { createClient } from "@/lib/supabase/client";
 
 export default function AnalyzerPage() {
   const { t, locale } = useLanguage();
@@ -54,6 +56,22 @@ export default function AnalyzerPage() {
           setTimeout(() => {
             resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
           }, 100);
+          // Auto-save to history if logged in
+          try {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              fetch("/api/history", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  query_text: trimmed,
+                  response_json: json.data,
+                  case_type: json.data.case_type,
+                }),
+              }).catch(() => {}); // silently fail
+            }
+          } catch {}
         }
         break;
       } catch {
@@ -92,7 +110,7 @@ export default function AnalyzerPage() {
       </div>
 
       {/* Nav */}
-      <nav className="relative z-10 flex items-center justify-between px-6 md:px-12 py-5 border-b border-white/[0.04]">
+      <nav className="relative z-50 flex items-center justify-between px-6 md:px-12 py-5 border-b border-white/[0.04]">
         <Link href="/" className="flex items-center gap-2.5 group">
           <Image src="/logo-icon.png" alt="LegalMinds" width={36} height={36} className="h-9 w-9" />
           <span className="font-display text-lg tracking-tight">
@@ -105,6 +123,7 @@ export default function AnalyzerPage() {
           <span className="text-xs text-ivory/25 hidden sm:block">
             {t("analyzer.tagline")}
           </span>
+          <AuthButton />
         </div>
       </nav>
 
@@ -222,7 +241,7 @@ export default function AnalyzerPage() {
         {/* Results */}
         {result && !loading && (
           <div ref={resultsRef} className="mt-8">
-            <ResultCards data={result} onClarify={handleClarify} />
+            <ResultCards data={result} onClarify={handleClarify} query={input} />
 
             <div className="mt-8 text-center">
               <button

@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { LegalAnalysis, NoticeDetails } from "@/lib/types";
-import { downloadLegalNoticePdf } from "@/lib/generatePdf";
+import { downloadAnalysisPdf } from "@/lib/generatePdf";
 import { downloadLegalNoticeDocument } from "@/lib/generateNoticePdf";
+import { linkCitations } from "@/lib/linkCitations";
 import { useLanguage } from "@/i18n/LanguageContext";
 import { LANGUAGE_NAMES } from "@/i18n";
+import { createClient } from "@/lib/supabase/client";
 import NoticeModal from "./NoticeModal";
 import {
   ScaleIcon,
@@ -19,12 +21,21 @@ import {
 interface Props {
   data: LegalAnalysis;
   onClarify?: (question: string) => void;
+  query?: string;
+  isAuthenticated?: boolean;
 }
 
-export default function ResultCards({ data, onClarify }: Props) {
+export default function ResultCards({ data, onClarify, query, isAuthenticated }: Props) {
   const { t, locale } = useLanguage();
   const [showNoticeModal, setShowNoticeModal] = useState(false);
   const [noticeLoading, setNoticeLoading] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(isAuthenticated ?? false);
+
+  useEffect(() => {
+    if (isAuthenticated !== undefined) { setIsLoggedIn(isAuthenticated); return; }
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => setIsLoggedIn(!!data.user));
+  }, [isAuthenticated]);
 
   const hasClarifications =
     data.clarifying_questions && data.clarifying_questions.length > 0;
@@ -68,9 +79,7 @@ export default function ResultCards({ data, onClarify }: Props) {
         stagger={1}
         accent="gold"
       >
-        <p className="text-sm text-ivory/75 leading-[1.75] whitespace-pre-line">
-          {data.case_summary}
-        </p>
+        <p className="text-sm text-ivory/75 leading-[1.75] whitespace-pre-line" dangerouslySetInnerHTML={{ __html: linkCitations(data.case_summary) }} />
       </Card>
 
       <Card
@@ -100,9 +109,7 @@ export default function ResultCards({ data, onClarify }: Props) {
         stagger={3}
         accent="default"
       >
-        <p className="text-sm text-ivory/75 leading-[1.75] whitespace-pre-line">
-          {data.jurisdiction_note}
-        </p>
+        <p className="text-sm text-ivory/75 leading-[1.75] whitespace-pre-line" dangerouslySetInnerHTML={{ __html: linkCitations(data.jurisdiction_note) }} />
       </Card>
 
       {data.applicable_laws.length > 0 && (
@@ -123,9 +130,7 @@ export default function ResultCards({ data, onClarify }: Props) {
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-ivory/70 leading-relaxed mb-2">
-                  {law.description}
-                </p>
+                <p className="text-sm text-ivory/70 leading-relaxed mb-2" dangerouslySetInnerHTML={{ __html: linkCitations(law.description) }} />
                 <p className="text-[11px] uppercase text-ivory/40">{t("results.confidenceLabel")} {law.confidence}</p>
               </div>
             ))}
@@ -370,7 +375,10 @@ export default function ResultCards({ data, onClarify }: Props) {
       {/* Action buttons */}
       <div className="mt-4 flex flex-wrap justify-center gap-3 animate-slide-up stagger-15">
         <button
-          onClick={() => setShowNoticeModal(true)}
+          onClick={() => {
+            if (!isLoggedIn) { window.location.href = "/auth/login?redirect=/analyzer"; return; }
+            setShowNoticeModal(true);
+          }}
           className="
             flex items-center gap-2.5 px-6 py-3 rounded-xl
             bg-gold-500 hover:bg-gold-400
@@ -390,7 +398,10 @@ export default function ResultCards({ data, onClarify }: Props) {
           {t("results.generateNotice")}
         </button>
         <button
-          onClick={() => downloadLegalNoticePdf(data, locale)}
+          onClick={() => {
+            if (!isLoggedIn) { window.location.href = "/auth/login?redirect=/analyzer"; return; }
+            downloadAnalysisPdf(data, locale, query);
+          }}
           className="
             flex items-center gap-2.5 px-6 py-3 rounded-xl
             bg-white/[0.04] hover:bg-white/[0.08]

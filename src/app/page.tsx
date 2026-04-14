@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRightIcon, SparkleIcon } from "@/components/Icons";
 import LanguageSelector from "@/components/LanguageSelector";
+import AuthButton from "@/components/AuthButton";
 import { useLanguage } from "@/i18n/LanguageContext";
 
 export default function HomePage() {
@@ -25,7 +26,7 @@ export default function HomePage() {
       </div>
 
       {/* Nav */}
-      <nav className="relative z-10 flex items-center justify-between px-6 md:px-12 py-5">
+      <nav className="relative z-50 flex items-center justify-between px-6 md:px-12 py-5">
         <div className="flex items-center gap-3">
           <Image src="/logo-icon.png" alt="LegalMinds" width={40} height={40} className="h-10 w-10" />
           <span className="font-display text-xl tracking-tight">
@@ -41,6 +42,7 @@ export default function HomePage() {
           >
             {t("home.navLink")}
           </Link>
+          <AuthButton />
         </div>
       </nav>
 
@@ -102,7 +104,7 @@ export default function HomePage() {
           <span>|</span>
           <Link href="/privacy" className="hover:text-ivory/40 transition-colors">Privacy Policy</Link>
         </div>
-        <p className="text-[10px] text-ivory/10">&copy; 2025 LegalMinds. All rights reserved.</p>
+        <p className="text-[10px] text-ivory/10">&copy; {new Date().getFullYear()} LegalMinds. All rights reserved.</p>
       </footer>
     </div>
   );

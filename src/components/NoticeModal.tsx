@@ -122,7 +122,7 @@ export default function NoticeModal({ open, onClose, onGenerate, loading, analys
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm px-4 pt-[4vh] overflow-y-auto"
+      className="fixed inset-0 z-[200] flex items-start justify-center bg-black/60 backdrop-blur-sm px-4 pt-[4vh] overflow-y-auto"
       onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}
     >
       <div className="w-full max-w-xl rounded-xl bg-ink border border-white/[0.06] p-6 shadow-2xl animate-scale-in mb-10">

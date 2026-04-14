@@ -21,7 +21,7 @@ export default function DisclaimerModal() {
   }
 
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
+    <div className="fixed inset-0 z-[500] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4">
       <div className="w-full max-w-lg rounded-xl bg-ink border border-white/[0.08] p-6 shadow-2xl animate-scale-in">
         <div className="flex items-center gap-2.5 mb-4">
           <span className="text-2xl">&#9878;</span>

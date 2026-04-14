@@ -6,7 +6,7 @@ import { getTranslation } from "@/i18n";
  * Generate a professionally formatted legal analysis PDF using html2pdf.js.
  * Uses browser's native font rendering so all Indic scripts display correctly.
  */
-export async function downloadLegalNoticePdf(data: LegalAnalysis, locale: Locale = "en") {
+export async function downloadAnalysisPdf(data: LegalAnalysis, locale: Locale = "en", query?: string) {
   const html2pdf = (await import("html2pdf.js")).default;
 
   const t = (key: string) => getTranslation(locale, key);
@@ -75,10 +75,20 @@ export async function downloadLegalNoticePdf(data: LegalAnalysis, locale: Locale
   const html = `
     <div style="font-family:'Noto Sans',system-ui,-apple-system,sans-serif;color:#1e1e1e;padding:0;max-width:170mm;">
       <!-- Header -->
-      <div style="text-align:right;font-size:10px;color:#666;margin-bottom:16px;">Date: ${today}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:16px;font-weight:700;color:#1e1e1e;">Legal<span style="color:#c8aa32;">Minds</span></span>
+        </div>
+        <span style="font-size:10px;color:#666;">Date: ${today}</span>
+      </div>
       <h1 style="text-align:center;font-size:18px;font-weight:700;margin:0 0 6px 0;">LEGAL ANALYSIS</h1>
       <p style="text-align:center;font-size:11px;color:#555;margin:0 0 4px 0;"><strong>Subject:</strong> ${escHtml(data.case_type)}</p>
       <hr style="border:none;border-top:1px solid #ccc;margin:10px 0;">
+
+      ${query ? `<div style="margin-bottom:14px;padding:8px 10px;background:#f5f5f5;border-radius:6px;border:1px solid #e0e0e0;">
+        <p style="font-size:9px;color:#888;text-transform:uppercase;margin:0 0 4px 0;">Your Query</p>
+        <p style="font-size:11px;color:#333;margin:0;line-height:1.6;">${escHtml(query)}</p>
+      </div>` : ""}
 
       ${sectionHtml(1, t("results.caseSummary"), `<p style="margin:0;">${escHtml(data.case_summary)}</p>`)}
 
