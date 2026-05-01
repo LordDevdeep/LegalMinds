@@ -1,58 +1,122 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeLegalCase } from "@/lib/gemini";
-import type { ApiResponse } from "@/lib/types";
+import type { ApiResponse, LegalAnalysis } from "@/lib/types";
+import type { AnalysisResult, IndianState } from "@/types/legal";
+import { INDIAN_STATES } from "@/types/legal";
+import { toAnalysisResult } from "@/lib/toAnalysisResult";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-/**
- * Map known error messages to user-friendly responses.
- * Unknown errors get a generic message to avoid leaking internals.
- */
-function toSafeMessage(message: string): string {
+type ExtendedSuccess = {
+  success: true;
+  data: LegalAnalysis;
+  analysis: AnalysisResult;
+};
+type ExtendedFailure = {
+  success: false;
+  error: string;
+  errorKind?: "network" | "timeout" | "validation" | "rate_limit" | "generic";
+};
+type ExtendedResponse = ExtendedSuccess | ExtendedFailure;
+
+function toSafeMessage(message: string): {
+  text: string;
+  kind: ExtendedFailure["errorKind"];
+} {
   if (message.includes("GROQ_API_KEY is not configured")) {
-    return "The server is not properly configured. Please set the GROQ_API_KEY environment variable in your Vercel project settings.";
+    return {
+      text: "The server is not properly configured. Please set the GROQ_API_KEY environment variable.",
+      kind: "generic",
+    };
   }
   if (message.includes("Invalid API Key") || message.includes("invalid_api_key")) {
-    return "The API key is invalid. Please check your GROQ_API_KEY in Vercel project settings.";
+    return {
+      text: "The API key is invalid. Please check your GROQ_API_KEY.",
+      kind: "generic",
+    };
   }
   if (message.includes("rate limit") || message.includes("Rate limit")) {
-    return "Too many requests. Please wait a moment and try again.";
+    return {
+      text: "Too many requests. Please wait 60 seconds.",
+      kind: "rate_limit",
+    };
   }
   if (message.includes("empty response")) {
-    return "The AI model returned an empty response. Please try again.";
+    return { text: "The AI returned an empty response. Please retry.", kind: "generic" };
   }
-  if (message.includes("at least 10 characters") || message.includes("more detail")) {
-    return message; // User-facing validation — pass through
+  if (message.includes("timeout") || message.includes("Timeout")) {
+    return {
+      text: "Analysis is taking longer than expected. Try again or simplify your query.",
+      kind: "timeout",
+    };
   }
-  // Generic fallback for truly unexpected errors
-  return "Something went wrong while analyzing your case. Please try again.";
+  if (
+    message.includes("at least 10 characters") ||
+    message.includes("more detail")
+  ) {
+    return { text: message, kind: "validation" };
+  }
+  return {
+    text: "Something went wrong while analyzing your case. Please try again.",
+    kind: "generic",
+  };
 }
 
-export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>> {
+export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse | ExtendedResponse>> {
+  const start = Date.now();
   try {
     const body = await req.json();
     const input: string | undefined = body?.input;
     const language: string = body?.language || "English";
+    const domainHint: string | undefined = body?.domainHint;
+    const jurisdictionRaw: string | undefined = body?.jurisdiction;
+    const jurisdiction: IndianState =
+      jurisdictionRaw && (INDIAN_STATES as string[]).includes(jurisdictionRaw)
+        ? (jurisdictionRaw as IndianState)
+        : "Other";
 
     if (!input || typeof input !== "string" || input.trim().length === 0) {
       return NextResponse.json(
-        { success: false, error: "Please describe your legal situation." },
+        {
+          success: false,
+          error: "Please describe your legal situation in at least 30 characters.",
+          errorKind: "validation",
+        },
+        { status: 400 }
+      );
+    }
+    if (input.trim().length < 30) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Please describe your situation in at least 30 characters.",
+          errorKind: "validation",
+        },
         { status: 400 }
       );
     }
 
-    const analysis = await analyzeLegalCase(input, language);
+    const data = await analyzeLegalCase(input, language, domainHint);
 
-    return NextResponse.json({ success: true, data: analysis });
+    const responseTimeMs = Date.now() - start;
+    const analysis = toAnalysisResult(data, {
+      query: input.trim(),
+      language: language === "Hindi" ? "hi" : "en",
+      jurisdiction,
+      domainHint,
+      responseTimeMs,
+    });
+
+    return NextResponse.json({ success: true, data, analysis });
   } catch (err: unknown) {
-    const message =
-      err instanceof Error ? err.message : "An unexpected error occurred.";
+    const message = err instanceof Error ? err.message : "An unexpected error occurred.";
 
     console.error("[/api/analyze] Error:", message);
 
+    const safe = toSafeMessage(message);
     return NextResponse.json(
-      { success: false, error: toSafeMessage(message) },
+      { success: false, error: safe.text, errorKind: safe.kind },
       { status: 500 }
     );
   }

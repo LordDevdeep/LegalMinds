@@ -14,6 +14,22 @@ import type {
   EstimatedCosts,
 } from "./types";
 import { getLinksForCaseType, getHelplines } from "./filingLinks";
+import { STATUTE_DATABASE, statutesForDomain } from "@/data/statutes";
+
+function buildStatuteContext(domainHint?: string): string {
+  const subset =
+    domainHint && domainHint !== "all"
+      ? statutesForDomain(domainHint)
+      : STATUTE_DATABASE;
+  const list = subset
+    .slice(0, 50)
+    .map(
+      (s) =>
+        `- ${s.act} \u00A7${s.section} (${s.id}): ${s.title}`
+    )
+    .join("\n");
+  return `\n\nGROUNDED STATUTE LIST — cite ONLY sections from this list. If exact match doesn't exist, use the closest applicable.\n${list}\n`;
+}
 
 /* ── Hindi language instruction (compact) ── */
 
@@ -274,7 +290,8 @@ function parseModelResponse(text: string): LegalAnalysis {
 
 export async function analyzeLegalCase(
   userInput: string,
-  language: string = "English"
+  language: string = "English",
+  domainHint?: string
 ): Promise<LegalAnalysis> {
   // Collect all available API keys
   const apiKeys: string[] = [];
@@ -303,7 +320,11 @@ export async function analyzeLegalCase(
       const groq = new Groq({ apiKey });
 
       const isHindi = language === "Hindi";
-      const systemContent = isHindi ? HINDI_SYSTEM_PROMPT + SYSTEM_PROMPT.split("\n\n").slice(1).join("\n\n") : SYSTEM_PROMPT;
+      const grounded = buildStatuteContext(domainHint);
+      const systemContent =
+        (isHindi
+          ? HINDI_SYSTEM_PROMPT + SYSTEM_PROMPT.split("\n\n").slice(1).join("\n\n")
+          : SYSTEM_PROMPT) + grounded;
 
       const chatCompletion = await groq.chat.completions.create({
         messages: [
