@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { AnalysisResult } from "@/types/legal";
 import AnalysisResultView from "@/components/AnalysisResult";
+import { createClient } from "@/lib/supabase/client";
 
 interface Props {
   params: { id: string };
@@ -13,18 +14,46 @@ interface Props {
 export default function SharedAnalysisPage({ params }: Props) {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(`lm-analysis-${params.id}`);
-      if (!raw) {
-        setNotFound(true);
-        return;
+    let cancelled = false;
+    async function load() {
+      // 1) Try local storage first (instant for the original author)
+      try {
+        const raw = localStorage.getItem(`lm-analysis-${params.id}`);
+        if (raw && !cancelled) {
+          setResult(JSON.parse(raw));
+          setLoading(false);
+          return;
+        }
+      } catch {}
+
+      // 2) Fall back to remote
+      try {
+        const res = await fetch(
+          `/api/shared-analysis?id=${encodeURIComponent(params.id)}`
+        );
+        const json = await res.json();
+        if (!cancelled) {
+          if (json.success && json.payload) {
+            setResult(json.payload as AnalysisResult);
+          } else {
+            setNotFound(true);
+          }
+          setLoading(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setNotFound(true);
+          setLoading(false);
+        }
       }
-      setResult(JSON.parse(raw));
-    } catch {
-      setNotFound(true);
     }
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, [params.id]);
 
   function handlePrint() {
@@ -33,6 +62,14 @@ export default function SharedAnalysisPage({ params }: Props) {
 
   async function handlePdf() {
     if (!result) return;
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        window.location.href = `/auth/login?redirect=/share/${params.id}`;
+        return;
+      }
+    } catch {}
     const { generateAnalysisPDF } = await import("@/lib/generateAnalysisPdf");
     generateAnalysisPDF(result);
   }
@@ -51,14 +88,18 @@ export default function SharedAnalysisPage({ params }: Props) {
       </nav>
 
       <main className="relative z-10 max-w-2xl mx-auto px-5 py-10 md:py-16 print:max-w-none print:py-0">
+        {loading && !result && !notFound && (
+          <div className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-6 text-center">
+            <p className="text-sm text-ivory/60">Loading shared analysis…</p>
+          </div>
+        )}
         {notFound && (
           <div className="rounded-xl bg-legal-amber/10 border border-legal-amber/25 p-6 text-center">
             <p className="text-sm text-legal-amber font-semibold mb-2">
               Analysis not found
             </p>
             <p className="text-xs text-ivory/60">
-              Shared links rely on browser local storage. This link can only be
-              opened on the browser where the analysis was created.
+              This share link is invalid or the analysis was never saved.
             </p>
             <Link
               href="/analyzer"

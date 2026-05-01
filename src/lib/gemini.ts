@@ -521,16 +521,79 @@ Limitation Period: ${analysis.time_sensitivity.limitation_period}`;
 
 /* ── Compensation Suggestion ──────────────────────────── */
 
-const COMPENSATION_PROMPT = `You are an Indian legal compensation advisor.
-Based on the legal analysis provided, suggest a reasonable compensation range.
-Consider the case type, applicable laws, severity, and Indian court precedents.
+const COMPENSATION_PROMPT = `You are an Indian legal compensation advisor with knowledge of Indian court precedents, statutory caps, and typical award ranges.
+
+Suggest a realistic compensation range for the case described. Anchor your numbers in the reference benchmarks below. Do NOT inflate. Do NOT propose a token figure if statute or precedent supports more.
+
+REFERENCE BENCHMARKS (Indian courts, typical awards):
+
+Consumer disputes (Consumer Protection Act 2019):
+  - Refund of paid amount + 10-30% as punitive/inconvenience compensation.
+  - Service deficiency: Rs 10,000 - Rs 5,00,000 (District Forum), more at State/National level.
+  - Unfair trade practice: actual loss + up to Rs 1,00,000 punitive in District; higher at State.
+
+Cheque dishonour (Section 138 NI Act):
+  - Compensation up to twice the cheque amount + interest at 9-12% p.a. Statutory cap.
+
+Cheating / fraud (IPC 420 / BNS equivalent):
+  - Full amount defrauded + interest 6-12% p.a. + litigation costs (typically Rs 25,000-Rs 1,00,000).
+
+Defamation (civil):
+  - Public figure / mass-media: Rs 5,00,000 - Rs 50,00,000.
+  - Private individual / small reach: Rs 50,000 - Rs 5,00,000.
+  - Online defamation, limited reach: Rs 25,000 - Rs 2,00,000.
+
+Wrongful termination / labour disputes:
+  - Reinstatement + back wages (50%-100% of unpaid period) OR
+  - Compensation in lieu of reinstatement: 6-24 months salary depending on tenure and conduct.
+  - Statutory dues separate: gratuity (15 days wages per year), retrenchment compensation (15 days per year).
+  - Sexual harassment at workplace (POSH Act): Rs 50,000 - Rs 5,00,000 typical, more for senior victims.
+
+Domestic violence (DV Act 2005, Section 20):
+  - Medical expenses + loss of earnings + property damage + maintenance.
+  - Maintenance: typically 25-40% of respondent's net income.
+  - Compensation order (Section 22): Rs 25,000 - Rs 5,00,000 for mental and physical injuries.
+
+Motor accidents (MV Act, Section 166):
+  - Death: Sarla Verma multiplier method - annual income x multiplier (5-18 based on age) + Rs 70,000 conventional heads (loss of consortium / estate / funeral).
+  - Permanent disability: based on income loss x multiplier + medical + future expenses.
+  - Minor injury: Rs 50,000 - Rs 5,00,000.
+
+Property disputes / unlawful possession:
+  - Rent / mesne profits for the unauthorised period + damages (typically 1.5-2x normal rent).
+  - Security deposit refund + interest 9-12% p.a. + Rs 10,000-Rs 50,000 inconvenience.
+
+Cybercrime / IT Act 43:
+  - Actual financial loss recovered + 10-25% additional + emotional damages Rs 25,000-Rs 2,00,000.
+  - Identity theft: Rs 50,000 - Rs 5,00,000.
+
+Tenant eviction (illegal):
+  - Rs 25,000 - Rs 2,00,000 + reinstatement of possession + costs.
+
+Medical negligence:
+  - Death: Rs 10,00,000 - Rs 50,00,000+ (Sarla Verma method or higher).
+  - Permanent injury: Rs 5,00,000 - Rs 25,00,000.
+  - Treatment failure with recovery: Rs 1,00,000 - Rs 10,00,000.
+
+Cruelty / 498A (separate from criminal proceedings, civil/maintenance):
+  - Maintenance under Section 125 CrPC: 25-40% of husband's income.
+  - Stridhan recovery: full value + interest.
+
+GUIDELINES:
+1. Use the case-specific benchmarks above. Do not invent your own ranges.
+2. If the user mentions a specific monetary loss or amount, anchor min around that amount and max at 2-3x for severe cases.
+3. Adjust upward for: critical urgency, multiple statutes invoked, repeat conduct, high-income or organisational defendant.
+4. Adjust downward for: weak evidence, low quantum claim, first-time minor offence, partial fault of claimant.
+5. Numbers must be in INR using Indian comma notation (e.g. "5,00,000" for five lakhs, "50,00,000" for fifty lakhs, "1,00,00,000" for one crore).
+6. Reasoning must cite the specific benchmark used and the adjustment factors that moved you within the range.
+
 Return ONLY valid JSON. No markdown fences or extra text.
 
 JSON schema:
 {
-  "min": "amount in INR (e.g. 50,000)",
-  "max": "amount in INR (e.g. 5,00,000)",
-  "reasoning": "Brief explanation of why this range is appropriate (2-3 sentences)"
+  "min": "INR amount in Indian comma notation",
+  "max": "INR amount in Indian comma notation",
+  "reasoning": "3-4 sentences. Cite the case-type benchmark and the adjustment factors that placed your numbers within or above/below the typical range. Reference the specific statute or precedent class where applicable."
 }`;
 
 export async function suggestCompensation(
@@ -548,13 +611,43 @@ export async function suggestCompensation(
     throw new Error("No GROQ_API_KEY configured on the server.");
   }
 
-  const userMessage = `Suggest a compensation range for this Indian legal case:
+  const lawsDetail = analysis.applicable_laws
+    .slice(0, 6)
+    .map(
+      (l) =>
+        `- ${l.act}${
+          l.sections.length ? ` Sections ${l.sections.join(", ")}` : ""
+        }: ${l.description}`
+    )
+    .join("\n");
 
-Case Type: ${analysis.case_type}
-Summary: ${analysis.case_summary}
-Applicable Laws: ${analysis.applicable_laws.slice(0, 3).map((l) => l.act).join(", ")}
-Estimated Costs - Court Fees: ${analysis.estimated_costs.court_fees}, Lawyer Fees: ${analysis.estimated_costs.lawyer_fees}
-Urgency: ${analysis.time_sensitivity.urgency}`;
+  const userMessage = `Suggest a compensation range for this Indian legal case. Use the reference benchmarks in your system instructions; do not invent ranges.
+
+CASE TYPE: ${analysis.case_type}
+RELATED TYPES: ${analysis.related_case_types.join(", ") || "—"}
+
+CASE SUMMARY:
+${analysis.case_summary}
+
+APPLICABLE LAWS:
+${lawsDetail || "—"}
+
+EXPLANATION / CONTEXT:
+${analysis.explanation || "—"}
+
+JURISDICTION: ${analysis.jurisdiction_note || "General Indian"}
+URGENCY / SEVERITY: ${analysis.time_sensitivity.urgency} (${analysis.time_sensitivity.limitation_period || "no limitation noted"})
+
+POSSIBLE OUTCOMES (per analysis):
+- Best: ${analysis.possible_outcomes.best_case || "—"}
+- Likely: ${analysis.possible_outcomes.likely_case || "—"}
+- Worst: ${analysis.possible_outcomes.worst_case || "—"}
+
+ESTIMATED COSTS (already computed):
+- Court Fees: ${analysis.estimated_costs.court_fees || "—"}
+- Lawyer Fees: ${analysis.estimated_costs.lawyer_fees || "—"}
+
+Now compute the compensation range. Be specific and concrete. Cite the exact benchmark category from the system prompt that you applied.`;
 
   let lastError: Error | null = null;
 
@@ -564,12 +657,12 @@ Urgency: ${analysis.time_sensitivity.urgency}`;
 
       const chatCompletion = await groq.chat.completions.create({
         messages: [
-          { role: "system", content: COMPENSATION_PROMPT + (language === "Hindi" ? `\nIMPORTANT: Write "reasoning" in simple Hindi (Devanagari). Keep "min" and "max" as INR numbers.` : "") },
+          { role: "system", content: COMPENSATION_PROMPT + (language === "Hindi" ? `\nIMPORTANT: Write "reasoning" in simple Hindi (Devanagari). Keep "min" and "max" as INR numbers in Indian comma notation.` : "") },
           { role: "user", content: (language === "Hindi" ? `Write reasoning in Hindi.\n\n` : "") + userMessage },
         ],
-        model: "llama-3.1-8b-instant",
-        temperature: 0.3,
-        max_tokens: 512,
+        model: "llama-3.3-70b-versatile",
+        temperature: 0.15,
+        max_tokens: 800,
         response_format: { type: "json_object" },
       });
 

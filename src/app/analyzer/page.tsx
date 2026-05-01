@@ -112,6 +112,15 @@ export default function AnalyzerPage() {
               JSON.stringify(json.analysis)
             );
           } catch {}
+          // Save remotely so the share link works on any device
+          fetch("/api/shared-analysis", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: json.analysis.id,
+              payload: json.analysis,
+            }),
+          }).catch(() => {});
           setTimeout(() => {
             resultsRef.current?.scrollIntoView({
               behavior: "smooth",
@@ -161,9 +170,15 @@ export default function AnalyzerPage() {
   async function handleShare() {
     if (!result) return;
     const url = `${window.location.origin}/share/${result.id}`;
+    // Best-effort re-save to ensure remote copy exists (idempotent upsert)
+    fetch("/api/shared-analysis", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: result.id, payload: result }),
+    }).catch(() => {});
     try {
       await navigator.clipboard.writeText(url);
-      alert(`Share link copied!\n${url}\n\nNote: shareable only on this browser (link reads from your local storage).`);
+      alert(`Share link copied!\n${url}\n\nThis link can be opened on any device.`);
     } catch {
       prompt("Copy this share link:", url);
     }
@@ -211,6 +226,14 @@ export default function AnalyzerPage() {
 
   async function handlePdf() {
     if (!result) return;
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        window.location.href = "/auth/login?redirect=/analyzer";
+        return;
+      }
+    } catch {}
     const { generateAnalysisPDF } = await import("@/lib/generateAnalysisPdf");
     generateAnalysisPDF(result);
   }

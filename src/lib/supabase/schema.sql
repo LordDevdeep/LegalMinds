@@ -71,3 +71,28 @@ create policy "Users can delete own analyses"
 
 create index if not exists analyses_user_id_idx on analyses(user_id);
 create index if not exists analyses_created_at_idx on analyses(created_at desc);
+
+
+-- ============================================
+-- PART 3: Shared analyses (public read by link)
+-- ============================================
+
+create table if not exists shared_analyses (
+  id text primary key,
+  payload jsonb not null,
+  created_at timestamptz default now()
+);
+
+alter table shared_analyses enable row level security;
+
+-- Anyone with the link can read
+create policy "Public can read shared analyses"
+  on shared_analyses for select
+  using (true);
+
+-- Anyone (signed-in or anon) can insert; the random UUID acts as the secret
+create policy "Anyone can insert a shared analysis"
+  on shared_analyses for insert
+  with check (true);
+
+create index if not exists shared_analyses_created_at_idx on shared_analyses(created_at desc);
