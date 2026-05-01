@@ -15,6 +15,7 @@ export default function SharedAnalysisPage({ params }: Props) {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [serverError, setServerError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,18 +35,24 @@ export default function SharedAnalysisPage({ params }: Props) {
         const res = await fetch(
           `/api/shared-analysis?id=${encodeURIComponent(params.id)}`
         );
-        const json = await res.json();
-        if (!cancelled) {
-          if (json.success && json.payload) {
-            setResult(json.payload as AnalysisResult);
-          } else {
-            setNotFound(true);
+        const json = await res.json().catch(() => ({}));
+        if (cancelled) return;
+
+        if (json?.success && json?.payload) {
+          setResult(json.payload as AnalysisResult);
+        } else {
+          setNotFound(true);
+          if (json?.error && res.status !== 404) {
+            setServerError(String(json.error));
           }
-          setLoading(false);
         }
-      } catch {
+        setLoading(false);
+      } catch (e) {
         if (!cancelled) {
           setNotFound(true);
+          setServerError(
+            e instanceof Error ? e.message : "Network error"
+          );
           setLoading(false);
         }
       }
@@ -99,7 +106,16 @@ export default function SharedAnalysisPage({ params }: Props) {
               Analysis not found
             </p>
             <p className="text-xs text-ivory/60">
-              This share link is invalid or the analysis was never saved.
+              This share link is invalid, the analysis expired, or the server
+              hasn&apos;t been set up to store shared analyses yet.
+            </p>
+            {serverError && (
+              <p className="mt-3 text-[11px] text-legal-red/80 break-words">
+                Server error: {serverError}
+              </p>
+            )}
+            <p className="mt-3 text-[11px] text-ivory/40">
+              ID: <span className="font-mono">{params.id}</span>
             </p>
             <Link
               href="/analyzer"
