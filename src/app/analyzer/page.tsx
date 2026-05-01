@@ -171,31 +171,20 @@ export default function AnalyzerPage() {
     if (!result) return;
     const url = `${window.location.origin}/share/${result.id}`;
 
-    // Step 1: ensure the analysis is saved server-side so the link works on any device.
-    let saved = false;
-    try {
-      const res = await fetch("/api/shared-analysis", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: result.id, payload: result }),
-      });
-      const json = await res.json().catch(() => ({}));
-      saved = !!json?.success;
-      if (!saved) {
-        console.error("[share] remote save failed:", json);
-      }
-    } catch (e) {
-      console.error("[share] remote save error:", e);
-    }
+    // Fire remote save in the background — never block the share sheet on it.
+    fetch("/api/shared-analysis", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: result.id, payload: result }),
+    })
+      .then(async (res) => {
+        const json = await res.json().catch(() => ({}));
+        if (!json?.success) {
+          console.warn("[share] remote save failed:", json);
+        }
+      })
+      .catch((e) => console.warn("[share] remote save error:", e));
 
-    if (!saved) {
-      alert(
-        "Couldn't save the analysis remotely. The link will only work on this browser.\n\n" +
-        "If you're the site owner: run the shared_analyses SQL block from src/lib/supabase/schema.sql in your Supabase project."
-      );
-    }
-
-    // Step 2: native share sheet (mobile + supported browsers) → falls back to clipboard.
     const shareData = {
       title: "LegalMinds Analysis",
       text: `My legal analysis from LegalMinds — ${result.query.slice(0, 100)}${
@@ -209,14 +198,13 @@ export default function AnalyzerPage() {
         await (navigator as Navigator & { share: (d: unknown) => Promise<void> }).share(shareData);
         return;
       } catch (e: unknown) {
-        // User cancelled — silent. Other errors → fall through to clipboard.
         if ((e as { name?: string })?.name === "AbortError") return;
       }
     }
 
     try {
       await navigator.clipboard.writeText(url);
-      alert(`Share link copied to clipboard:\n${url}`);
+      alert(`Link copied:\n${url}`);
     } catch {
       prompt("Copy this share link:", url);
     }
