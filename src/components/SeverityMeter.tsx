@@ -1,10 +1,11 @@
 "use client";
 
 import type { SeverityLevel } from "@/types/legal";
-import { useLanguage } from "@/i18n/LanguageContext";
+import { getTranslation } from "@/i18n";
 
 interface Props {
   level: SeverityLevel;
+  lang?: "en" | "hi";
 }
 
 const COLORS: Record<SeverityLevel, string> = {
@@ -15,8 +16,8 @@ const COLORS: Record<SeverityLevel, string> = {
   5: "bg-legal-red",
 };
 
-export default function SeverityMeter({ level }: Props) {
-  const { t } = useLanguage();
+export default function SeverityMeter({ level, lang = "en" }: Props) {
+  const t = (key: string) => getTranslation(lang, key);
   return (
     <div className="inline-flex items-center gap-2">
       <span className="text-[11px] uppercase tracking-wider text-ivory/40">

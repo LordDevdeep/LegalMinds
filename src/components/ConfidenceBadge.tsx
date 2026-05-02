@@ -1,10 +1,11 @@
 "use client";
 
 import type { ConfidenceLevel } from "@/types/legal";
-import { useLanguage } from "@/i18n/LanguageContext";
+import { getTranslation } from "@/i18n";
 
 interface Props {
   level: ConfidenceLevel;
+  lang?: "en" | "hi";
 }
 
 const STYLES: Record<ConfidenceLevel, { bg: string; text: string; key: string }> = {
@@ -25,8 +26,8 @@ const STYLES: Record<ConfidenceLevel, { bg: string; text: string; key: string }>
   },
 };
 
-export default function ConfidenceBadge({ level }: Props) {
-  const { t } = useLanguage();
+export default function ConfidenceBadge({ level, lang = "en" }: Props) {
+  const t = (key: string) => getTranslation(lang, key);
   const s = STYLES[level];
   return (
     <span

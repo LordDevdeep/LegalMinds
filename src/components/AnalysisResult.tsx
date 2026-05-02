@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AnalysisResult } from "@/types/legal";
 import { DOMAIN_LABELS } from "@/types/legal";
-import { useLanguage } from "@/i18n/LanguageContext";
+import { getTranslation } from "@/i18n";
 import ConfidenceBadge from "./ConfidenceBadge";
 import SeverityMeter from "./SeverityMeter";
 
@@ -30,7 +30,10 @@ export default function AnalysisResultView({
   onPrint,
   onGenerateNotice,
 }: Props) {
-  const { t } = useLanguage();
+  // Always render labels in the analysis's own language so a Hindi
+  // analysis stays Hindi for any viewer, regardless of their UI toggle.
+  const lang = result.language === "hi" ? "hi" : "en";
+  const t = (key: string) => getTranslation(lang, key);
   const [openLawIds, setOpenLawIds] = useState<Record<string, boolean>>({});
   const [view, setView] = useState<"plain" | "detailed">("plain");
   const [doneSteps, setDoneSteps] = useState<Record<number, boolean>>({});
@@ -99,8 +102,8 @@ export default function AnalysisResultView({
       {/* Card 1: Summary header */}
       <Card stagger={1}>
         <div className="flex flex-wrap items-center gap-3 mb-3">
-          <SeverityMeter level={result.severity} />
-          <ConfidenceBadge level={result.confidence} />
+          <SeverityMeter level={result.severity} lang={lang} />
+          <ConfidenceBadge level={result.confidence} lang={lang} />
           {result.needsLawyer && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gold-500/15 border border-gold-500/40 text-gold-400 text-[11px] font-semibold uppercase tracking-wider">
               {t("rx.lawyerRecommended")}
