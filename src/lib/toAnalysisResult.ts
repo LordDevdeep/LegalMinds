@@ -217,20 +217,17 @@ const DEFAULT_COSTS: Record<LegalDomain, CostEstimate> = {
   },
 };
 
-function buildSteps(la: LegalAnalysis): ActionStep[] {
+function buildSteps(la: LegalAnalysis, lang: Lang): ActionStep[] {
   if (la.action_steps.length === 0) {
-    return [
-      {
-        order: 1,
-        action: "Document everything",
-        detail: "Collect all relevant evidence, communications, and proofs.",
-      },
-      {
-        order: 2,
-        action: "Consult an advocate",
-        detail: "Discuss your situation with a qualified lawyer for tailored advice.",
-      },
-    ];
+    return lang === "hi"
+      ? [
+          { order: 1, action: "सब कुछ रिकॉर्ड करें", detail: "सभी प्रासंगिक सबूत, बातचीत और दस्तावेज़ इकट्ठा करें।" },
+          { order: 2, action: "वकील से सलाह लें", detail: "अपनी स्थिति पर अधिकृत वकील से बात करें।" },
+        ]
+      : [
+          { order: 1, action: "Document everything", detail: "Collect all relevant evidence, communications, and proofs." },
+          { order: 2, action: "Consult an advocate", detail: "Discuss your situation with a qualified lawyer for tailored advice." },
+        ];
   }
   return la.action_steps
     .sort((a, b) => a.step - b.step)
@@ -241,63 +238,168 @@ function buildSteps(la: LegalAnalysis): ActionStep[] {
     }));
 }
 
-function deriveRights(la: LegalAnalysis, domain: LegalDomain): string[] {
-  const r: string[] = [];
-  if (domain === "criminal") {
-    r.push("Right to be informed of grounds of arrest (Article 22, CrPC 50).");
-    r.push("Right to consult and be defended by a legal practitioner of your choice.");
-    r.push("Right to be produced before a Magistrate within 24 hours of arrest.");
-    r.push("Right to inform a relative or friend of your arrest (CrPC 50A).");
-  }
-  if (domain === "consumer") {
-    r.push("Right to file complaint at District Forum without lawyer (Consumer Protection Act 2019).");
-    r.push("Right to compensation, replacement, or refund for deficient goods/services.");
-    r.push("Right to be heard within prescribed timeframes (90 days statutory disposal target).");
-  }
-  if (domain === "labour") {
-    r.push("Right to wages, gratuity, and statutory dues on termination.");
-    r.push("Right to retrenchment compensation if continuously employed for 1+ year (IDA 25F).");
-    r.push("Right to safe and harassment-free workplace (POSH Act 2013).");
-  }
-  if (domain === "family") {
-    r.push("Right to maintenance under Section 125 CrPC and personal laws.");
-    r.push("Right to seek protection orders against domestic violence (DV Act 2005).");
-    r.push("Right to share in marital property and matrimonial home.");
-  }
-  if (domain === "property") {
-    r.push("Right to peaceful enjoyment of leased premises (TPA Section 108).");
-    r.push("Right to refund of security deposit minus actual damages.");
-    r.push("Right to be evicted only by due process under Rent Control law.");
-  }
-  if (domain === "cyber") {
-    r.push("Right to file FIR at any cybercrime cell or via cybercrime.gov.in.");
-    r.push("Right to compensation under IT Act Section 43 for damage to your data.");
-    r.push("Right to privacy of your personal information (IT Act Section 66E, Article 21).");
-  }
-  if (domain === "civil") {
-    r.push("Right to access civil courts to enforce contractual and other civil claims (CPC Section 9).");
-    r.push("Right to seek injunction to prevent ongoing wrongs (Specific Relief Act).");
-    r.push("Right to compensation for proven loss and damage.");
-  }
+const LAWYER_REASON = {
+  en: {
+    severe: "This case has serious legal consequences and benefits significantly from professional representation.",
+    minor: "Some legal complexity here; a lawyer can help you avoid procedural pitfalls.",
+  },
+  hi: {
+    severe: "इस मामले के गंभीर क़ानूनी परिणाम हो सकते हैं और पेशेवर वकील की मदद से बहुत फ़ायदा होगा।",
+    minor: "कुछ क़ानूनी जटिलताएँ हैं; वकील की मदद से प्रक्रियात्मक ग़लतियों से बचा जा सकता है।",
+  },
+};
+
+const HELPLINE_HI: Record<string, { name: string; whenToUse: string }> = {
+  "112": { name: "पुलिस आपातकालीन सेवा", whenToUse: "तत्काल ख़तरा, अपराध हो रहा हो, या आपातकालीन स्थिति।" },
+  "100": { name: "पुलिस", whenToUse: "किसी भी पुलिस सहायता के लिए।" },
+  "1091": { name: "महिला हेल्पलाइन", whenToUse: "महिलाओं के विरुद्ध हिंसा या उत्पीड़न।" },
+  "181": { name: "महिला हेल्पलाइन (181)", whenToUse: "संकट में महिलाओं के लिए राष्ट्रीय हेल्पलाइन।" },
+  "1098": { name: "चाइल्डलाइन", whenToUse: "बच्चों के विरुद्ध अपराध या संकट में बच्चे।" },
+  "15100": { name: "क़ानूनी सहायता (NALSA)", whenToUse: "जो वकील नहीं रख सकते उनके लिए मुफ़्त क़ानूनी सहायता।" },
+  "1930": { name: "साइबर क्राइम हेल्पलाइन", whenToUse: "ऑनलाइन धोखाधड़ी, साइबर अपराध की रिपोर्ट के लिए।" },
+  "14400": { name: "उपभोक्ता हेल्पलाइन (NCH)", whenToUse: "उपभोक्ता शिकायत और सहायता।" },
+  "1800-11-4000": { name: "उपभोक्ता हेल्पलाइन", whenToUse: "उपभोक्ता शिकायतें (टोल-फ़्री)।" },
+  "108": { name: "एम्बुलेंस", whenToUse: "चिकित्सा आपात स्थिति।" },
+};
+
+function localizeHelplines(
+  list: { name: string; number: string; whenToUse: string }[],
+  lang: Lang
+): { name: string; number: string; whenToUse: string }[] {
+  if (lang !== "hi") return list;
+  return list.map((h) => {
+    const key = h.number.replace(/\s|-/g, "");
+    const direct = HELPLINE_HI[h.number] || HELPLINE_HI[key];
+    if (direct) {
+      return { number: h.number, name: direct.name, whenToUse: direct.whenToUse };
+    }
+    return h;
+  });
+}
+
+type Lang = "en" | "hi";
+
+const RIGHTS_TEXT: Record<LegalDomain, { en: string[]; hi: string[] }> = {
+  criminal: {
+    en: [
+      "Right to be informed of grounds of arrest (Article 22, CrPC 50).",
+      "Right to consult and be defended by a legal practitioner of your choice.",
+      "Right to be produced before a Magistrate within 24 hours of arrest.",
+      "Right to inform a relative or friend of your arrest (CrPC 50A).",
+    ],
+    hi: [
+      "गिरफ़्तारी के कारण जानने का अधिकार (अनुच्छेद 22, CrPC 50)।",
+      "अपनी पसंद के वकील से सलाह लेने और बचाव करवाने का अधिकार।",
+      "गिरफ़्तारी के 24 घंटे के भीतर मजिस्ट्रेट के सामने पेश होने का अधिकार।",
+      "अपने रिश्तेदार या मित्र को गिरफ़्तारी की सूचना देने का अधिकार (CrPC 50A)।",
+    ],
+  },
+  consumer: {
+    en: [
+      "Right to file complaint at District Forum without lawyer (Consumer Protection Act 2019).",
+      "Right to compensation, replacement, or refund for deficient goods/services.",
+      "Right to be heard within prescribed timeframes (90 days statutory disposal target).",
+    ],
+    hi: [
+      "बिना वकील के ज़िला उपभोक्ता फोरम में शिकायत दर्ज करने का अधिकार (उपभोक्ता संरक्षण अधिनियम 2019)।",
+      "ख़राब वस्तु/सेवा के लिए मुआवज़ा, बदलाव या रिफ़ंड पाने का अधिकार।",
+      "निर्धारित समय (90 दिन का वैधानिक लक्ष्य) के भीतर सुनवाई का अधिकार।",
+    ],
+  },
+  labour: {
+    en: [
+      "Right to wages, gratuity, and statutory dues on termination.",
+      "Right to retrenchment compensation if continuously employed for 1+ year (IDA 25F).",
+      "Right to safe and harassment-free workplace (POSH Act 2013).",
+    ],
+    hi: [
+      "नौकरी समाप्त होने पर वेतन, ग्रेच्युटी और वैधानिक बकाया पाने का अधिकार।",
+      "1+ साल लगातार सेवा होने पर छंटनी मुआवज़ा पाने का अधिकार (IDA 25F)।",
+      "सुरक्षित और उत्पीड़न-मुक्त कार्यस्थल का अधिकार (POSH अधिनियम 2013)।",
+    ],
+  },
+  family: {
+    en: [
+      "Right to maintenance under Section 125 CrPC and personal laws.",
+      "Right to seek protection orders against domestic violence (DV Act 2005).",
+      "Right to share in marital property and matrimonial home.",
+    ],
+    hi: [
+      "धारा 125 CrPC और व्यक्तिगत कानूनों के तहत भरण-पोषण का अधिकार।",
+      "घरेलू हिंसा के विरुद्ध संरक्षण आदेश माँगने का अधिकार (घरेलू हिंसा अधिनियम 2005)।",
+      "वैवाहिक संपत्ति और साझा घर में हिस्सेदारी का अधिकार।",
+    ],
+  },
+  property: {
+    en: [
+      "Right to peaceful enjoyment of leased premises (TPA Section 108).",
+      "Right to refund of security deposit minus actual damages.",
+      "Right to be evicted only by due process under Rent Control law.",
+    ],
+    hi: [
+      "किराए पर लिए परिसर के शांतिपूर्ण उपयोग का अधिकार (TPA धारा 108)।",
+      "वास्तविक नुक़सान घटाकर सुरक्षा जमा (deposit) वापस पाने का अधिकार।",
+      "केवल किरायेदारी क़ानून की उचित प्रक्रिया से ही बेदख़ल किए जाने का अधिकार।",
+    ],
+  },
+  cyber: {
+    en: [
+      "Right to file FIR at any cybercrime cell or via cybercrime.gov.in.",
+      "Right to compensation under IT Act Section 43 for damage to your data.",
+      "Right to privacy of your personal information (IT Act Section 66E, Article 21).",
+    ],
+    hi: [
+      "किसी भी साइबर क्राइम सेल या cybercrime.gov.in पर FIR दर्ज करने का अधिकार।",
+      "अपने डेटा को नुक़सान होने पर IT अधिनियम धारा 43 के तहत मुआवज़ा पाने का अधिकार।",
+      "अपनी निजी जानकारी की गोपनीयता का अधिकार (IT अधिनियम 66E, अनुच्छेद 21)।",
+    ],
+  },
+  civil: {
+    en: [
+      "Right to access civil courts to enforce contractual and other civil claims (CPC Section 9).",
+      "Right to seek injunction to prevent ongoing wrongs (Specific Relief Act).",
+      "Right to compensation for proven loss and damage.",
+    ],
+    hi: [
+      "अनुबंध और अन्य सिविल दावों के लिए सिविल कोर्ट तक पहुँचने का अधिकार (CPC धारा 9)।",
+      "जारी अन्याय रोकने के लिए स्थगन/निषेधाज्ञा माँगने का अधिकार (विशिष्ट अनुतोष अधिनियम)।",
+      "सिद्ध हानि और क्षति के लिए मुआवज़ा पाने का अधिकार।",
+    ],
+  },
+};
+
+const LEGAL_AID_RIGHT = {
+  en: "Right to legal aid if you meet the income criteria under Legal Services Authorities Act.",
+  hi: "यदि आप क़ानूनी सेवा प्राधिकरण अधिनियम की आय सीमा में आते हैं तो मुफ़्त क़ानूनी सहायता का अधिकार।",
+};
+
+const PENALTY_PREFIX = {
+  en: { worst: "Worst case:", likely: "Likely outcome:", fallback: "Outcomes vary by facts and evidence. See detailed analysis for context." },
+  hi: { worst: "सबसे ख़राब स्थिति:", likely: "संभावित परिणाम:", fallback: "परिणाम तथ्यों और साक्ष्यों पर निर्भर करते हैं। संदर्भ के लिए विस्तृत विश्लेषण देखें।" },
+};
+
+function deriveRights(la: LegalAnalysis, domain: LegalDomain, lang: Lang): string[] {
+  const r: string[] = [...(RIGHTS_TEXT[domain]?.[lang] || RIGHTS_TEXT[domain]?.en || [])];
   if (la.required_documents?.identity_proof) {
-    r.push("Right to legal aid if you meet the income criteria under Legal Services Authorities Act.");
+    r.push(LEGAL_AID_RIGHT[lang]);
   }
   return r.slice(0, 6);
 }
 
-function derivePenalties(la: LegalAnalysis, statutes: StatuteSection[]): string[] {
+function derivePenalties(la: LegalAnalysis, statutes: StatuteSection[], lang: Lang): string[] {
   const out: string[] = [];
+  const px = PENALTY_PREFIX[lang];
   for (const s of statutes) {
     if (s.punishment) out.push(`${s.act} \u00A7${s.section}: ${s.punishment}`);
   }
   if (la.possible_outcomes?.worst_case) {
-    out.push(`Worst case: ${la.possible_outcomes.worst_case}`);
+    out.push(`${px.worst} ${la.possible_outcomes.worst_case}`);
   }
   if (la.possible_outcomes?.likely_case) {
-    out.push(`Likely outcome: ${la.possible_outcomes.likely_case}`);
+    out.push(`${px.likely} ${la.possible_outcomes.likely_case}`);
   }
   if (out.length === 0 && la.explanation) {
-    out.push("Outcomes vary by facts and evidence. See detailed analysis for context.");
+    out.push(px.fallback);
   }
   return out.slice(0, 6);
 }
@@ -355,6 +457,9 @@ export function toAnalysisResult(
       whenToUse: h.when_to_use,
     }));
 
+  const lang: Lang = opts.language;
+  const localizedHelplines = localizeHelplines(helplines, lang);
+
   return {
     id,
     query: opts.query,
@@ -363,9 +468,9 @@ export function toAnalysisResult(
     primaryDomain,
     jurisdiction: opts.jurisdiction,
     applicableLaws: statutes,
-    rights: deriveRights(la, primaryDomain),
-    penalties: derivePenalties(la, statutes),
-    nextSteps: buildSteps(la),
+    rights: deriveRights(la, primaryDomain, lang),
+    penalties: derivePenalties(la, statutes, lang),
+    nextSteps: buildSteps(la, lang),
     timeline,
     costs,
     confidence,
@@ -373,14 +478,14 @@ export function toAnalysisResult(
     needsLawyer,
     lawyerReason: needsLawyer
       ? severity >= 4
-        ? "This case has serious legal consequences and benefits significantly from professional representation."
-        : "Some legal complexity here; a lawyer can help you avoid procedural pitfalls."
+        ? LAWYER_REASON[lang].severe
+        : LAWYER_REASON[lang].minor
       : undefined,
     plainSummary: la.case_summary || la.explanation || "",
     detailedAnalysis: la.explanation || la.case_summary || "",
     createdAt: new Date().toISOString(),
     responseTimeMs: opts.responseTimeMs,
     filingLinks,
-    helplines,
+    helplines: localizedHelplines,
   };
 }

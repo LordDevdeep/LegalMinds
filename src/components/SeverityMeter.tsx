@@ -1,18 +1,11 @@
 "use client";
 
 import type { SeverityLevel } from "@/types/legal";
+import { useLanguage } from "@/i18n/LanguageContext";
 
 interface Props {
   level: SeverityLevel;
 }
-
-const LABELS: Record<SeverityLevel, string> = {
-  1: "Minor",
-  2: "Low",
-  3: "Moderate",
-  4: "Serious",
-  5: "Critical",
-};
 
 const COLORS: Record<SeverityLevel, string> = {
   1: "bg-legal-green",
@@ -23,10 +16,11 @@ const COLORS: Record<SeverityLevel, string> = {
 };
 
 export default function SeverityMeter({ level }: Props) {
+  const { t } = useLanguage();
   return (
     <div className="inline-flex items-center gap-2">
       <span className="text-[11px] uppercase tracking-wider text-ivory/40">
-        Severity
+        {t("rx.severity")}
       </span>
       <div className="flex items-center gap-1">
         {[1, 2, 3, 4, 5].map((i) => (
@@ -38,7 +32,9 @@ export default function SeverityMeter({ level }: Props) {
           />
         ))}
       </div>
-      <span className="text-[11px] font-semibold text-ivory/70">{LABELS[level]}</span>
+      <span className="text-[11px] font-semibold text-ivory/70">
+        {t(`rx.severity.${level}`)}
+      </span>
     </div>
   );
 }

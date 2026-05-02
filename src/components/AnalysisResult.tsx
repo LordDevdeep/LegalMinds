@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AnalysisResult } from "@/types/legal";
 import { DOMAIN_LABELS } from "@/types/legal";
+import { useLanguage } from "@/i18n/LanguageContext";
 import ConfidenceBadge from "./ConfidenceBadge";
 import SeverityMeter from "./SeverityMeter";
 
@@ -29,9 +30,18 @@ export default function AnalysisResultView({
   onPrint,
   onGenerateNotice,
 }: Props) {
+  const { t } = useLanguage();
   const [openLawIds, setOpenLawIds] = useState<Record<string, boolean>>({});
   const [view, setView] = useState<"plain" | "detailed">("plain");
   const [doneSteps, setDoneSteps] = useState<Record<number, boolean>>({});
+
+  const fmt = (key: string, vars: Record<string, string | number>) => {
+    let s = t(key);
+    for (const [k, v] of Object.entries(vars)) {
+      s = s.replace(`{${k}}`, String(v));
+    }
+    return s;
+  };
 
   const checklistKey = `lm-checklist-${result.id}`;
 
@@ -93,7 +103,7 @@ export default function AnalysisResultView({
           <ConfidenceBadge level={result.confidence} />
           {result.needsLawyer && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gold-500/15 border border-gold-500/40 text-gold-400 text-[11px] font-semibold uppercase tracking-wider">
-              ⚖ Lawyer Recommended
+              {t("rx.lawyerRecommended")}
             </span>
           )}
         </div>
@@ -126,7 +136,7 @@ export default function AnalysisResultView({
                 : "text-ivory/60 hover:text-ivory"
             }`}
           >
-            Plain English
+            {t("rx.plainEnglish")}
           </button>
           <button
             onClick={() => setView("detailed")}
@@ -136,7 +146,7 @@ export default function AnalysisResultView({
                 : "text-ivory/60 hover:text-ivory"
             }`}
           >
-            Detailed Legal
+            {t("rx.detailedLegal")}
           </button>
         </div>
         <p className="text-sm text-ivory/80 leading-relaxed whitespace-pre-line print:text-black">
@@ -144,7 +154,7 @@ export default function AnalysisResultView({
         </p>
         {result.needsLawyer && result.lawyerReason && (
           <p className="mt-3 text-xs text-gold-400/90">
-            <strong>Why a lawyer:</strong> {result.lawyerReason}
+            <strong>{t("rx.whyLawyer")}</strong> {result.lawyerReason}
           </p>
         )}
       </Card>
@@ -155,7 +165,7 @@ export default function AnalysisResultView({
           <div className="flex items-center gap-2 mb-3">
             <span className="text-legal-red text-lg leading-none">☎</span>
             <h3 className="font-display text-base text-ivory/95 print:text-black">
-              Emergency Helplines
+              {t("rx.emergencyHelplines")}
             </h3>
           </div>
           <div className="grid sm:grid-cols-2 gap-2.5">
@@ -184,7 +194,7 @@ export default function AnalysisResultView({
 
       {/* Card 2: Applicable Laws */}
       {result.applicableLaws.length > 0 && (
-        <Card stagger={2} title="Applicable Laws">
+        <Card stagger={2} title={t("rx.applicableLaws")}>
           <div className="space-y-3">
             {result.applicableLaws.map((law) => {
               const open = !!openLawIds[law.id];
@@ -222,7 +232,7 @@ export default function AnalysisResultView({
                     <p className="whitespace-pre-line">{law.text}</p>
                     {law.punishment && (
                       <p className="mt-2 text-xs text-legal-red/90">
-                        <strong>Punishment:</strong> {law.punishment}
+                        <strong>{t("rx.punishment")}</strong> {law.punishment}
                       </p>
                     )}
                   </div>
@@ -235,7 +245,7 @@ export default function AnalysisResultView({
 
       {/* Card 3: Rights */}
       {result.rights.length > 0 && (
-        <Card stagger={3} title="Your Rights">
+        <Card stagger={3} title={t("rx.yourRights")}>
           <ul className="space-y-2 text-sm text-ivory/80 leading-relaxed">
             {result.rights.map((r, i) => (
               <li key={i} className="flex gap-2">
@@ -249,7 +259,7 @@ export default function AnalysisResultView({
 
       {/* Card 4: Penalties / Outcomes */}
       {result.penalties.length > 0 && (
-        <Card stagger={4} title="Possible Penalties / Outcomes">
+        <Card stagger={4} title={t("rx.possiblePenalties")}>
           <ul className="space-y-2 text-sm text-ivory/80 leading-relaxed">
             {result.penalties.map((p, i) => (
               <li key={i} className="flex gap-2">
@@ -263,15 +273,15 @@ export default function AnalysisResultView({
 
       {/* Card 5: Next Steps Checklist */}
       {result.nextSteps.length > 0 && (
-        <Card stagger={5} title="Next Steps">
+        <Card stagger={5} title={t("rx.nextSteps")}>
           {stepsTotal > 0 && (
             <div className="mb-3">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[11px] uppercase tracking-wider text-ivory/40">
-                  Progress
+                  {t("rx.progress")}
                 </span>
                 <span className="text-[11px] text-ivory/60">
-                  {stepsDone} of {stepsTotal} completed
+                  {fmt("rx.completedFmt", { done: stepsDone, total: stepsTotal })}
                 </span>
               </div>
               <div className="h-1.5 rounded-full bg-white/[0.05] overflow-hidden">
@@ -322,10 +332,12 @@ export default function AnalysisResultView({
 
       {/* Card 6: Timeline */}
       {result.timeline.phases.length > 0 && (
-        <Card stagger={6} title="Estimated Timeline">
+        <Card stagger={6} title={t("rx.estimatedTimeline")}>
           <p className="text-xs text-ivory/50 mb-3">
-            Total: {result.timeline.totalDaysMin}–
-            {result.timeline.totalDaysMax} days
+            {fmt("rx.totalFmt", {
+              min: result.timeline.totalDaysMin,
+              max: result.timeline.totalDaysMax,
+            })}
           </p>
           <div className="space-y-3">
             {result.timeline.phases.map((p, i) => {
@@ -336,7 +348,7 @@ export default function AnalysisResultView({
                   <div className="flex items-center justify-between text-xs mb-1">
                     <span className="text-ivory/80 font-semibold">{p.name}</span>
                     <span className="text-ivory/50">
-                      {p.durationDays[0]}–{p.durationDays[1]} days
+                      {fmt("rx.daysFmt", { min: p.durationDays[0], max: p.durationDays[1] })}
                     </span>
                   </div>
                   <div className="relative h-2 rounded-full bg-white/[0.04] overflow-hidden">
@@ -357,11 +369,11 @@ export default function AnalysisResultView({
       )}
 
       {/* Card 7: Cost Estimate */}
-      <Card stagger={7} title="Cost Estimate">
+      <Card stagger={7} title={t("rx.costEstimate")}>
         <div className="grid sm:grid-cols-2 gap-3 text-sm">
           <div className="rounded-lg bg-white/[0.03] p-3 border border-white/[0.05]">
             <p className="text-[10px] uppercase tracking-wider text-ivory/40 mb-1">
-              Court Fees
+              {t("rx.courtFees")}
             </p>
             <p className="text-ivory/85 font-semibold">
               {inr(result.costs.courtFeesINR[0])} –{" "}
@@ -370,7 +382,7 @@ export default function AnalysisResultView({
           </div>
           <div className="rounded-lg bg-white/[0.03] p-3 border border-white/[0.05]">
             <p className="text-[10px] uppercase tracking-wider text-ivory/40 mb-1">
-              Lawyer Fees
+              {t("rx.lawyerFees")}
             </p>
             <p className="text-ivory/85 font-semibold">
               {inr(result.costs.lawyerFeesINR[0])} –{" "}
@@ -381,8 +393,7 @@ export default function AnalysisResultView({
         {result.costs.legalAidEligible && (
           <div className="mt-3 px-3 py-2 rounded-lg bg-legal-green/10 border border-legal-green/25">
             <p className="text-xs text-legal-green">
-              ✓ You may be eligible for free legal aid under Section 12,
-              Legal Services Authorities Act 1987.
+              {t("rx.legalAidNote")}
             </p>
           </div>
         )}
@@ -395,7 +406,7 @@ export default function AnalysisResultView({
 
       {/* Filing Links */}
       {result.filingLinks && result.filingLinks.length > 0 && (
-        <Card stagger={8} title="Where to File / Useful Portals">
+        <Card stagger={8} title={t("rx.whereToFile")}>
           <div className="space-y-2.5">
             {result.filingLinks.map((l, i) => (
               <a
@@ -425,7 +436,7 @@ export default function AnalysisResultView({
       {/* Free Legal Aid / Govt Lawyer footer */}
       <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] p-3 md:p-4 print:bg-white print:border-gray-300 print:p-3">
         <p className="text-[11px] text-ivory/45 print:text-gray-600 text-center mb-2.5">
-          Need a qualified advocate or free legal aid?
+          {t("rx.needLawyerFooter")}
         </p>
         <div className="flex flex-wrap justify-center gap-2">
           <a
@@ -434,7 +445,7 @@ export default function AnalysisResultView({
             rel="noreferrer"
             className="px-3 py-1.5 rounded-lg bg-legal-green/10 hover:bg-legal-green/15 border border-legal-green/25 text-[11px] text-legal-green font-semibold transition-colors print:bg-white print:border-gray-300"
           >
-            NALSA · Free Legal Aid
+            {t("rx.nalsaLink")}
           </a>
           <a
             href="https://www.barcouncilofindia.org/"
@@ -442,7 +453,7 @@ export default function AnalysisResultView({
             rel="noreferrer"
             className="px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-[11px] text-ivory/70 font-semibold transition-colors print:bg-white print:border-gray-300 print:text-gray-700"
           >
-            Bar Council of India
+            {t("rx.barCouncilLink")}
           </a>
           <a
             href="https://doj.gov.in/tele-law/"
@@ -450,14 +461,14 @@ export default function AnalysisResultView({
             rel="noreferrer"
             className="px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-[11px] text-ivory/70 font-semibold transition-colors print:bg-white print:border-gray-300 print:text-gray-700"
           >
-            Tele-Law (Govt Lawyers)
+            {t("rx.teleLawLink")}
           </a>
         </div>
       </div>
 
       {/* Response time */}
       <p className="text-[11px] text-ivory/30 text-center print:hidden">
-        Analyzed in {(result.responseTimeMs / 1000).toFixed(1)}s
+        {fmt("rx.analyzedIn", { time: (result.responseTimeMs / 1000).toFixed(1) })}
       </p>
 
       {/* Action buttons */}
@@ -468,7 +479,7 @@ export default function AnalysisResultView({
               onClick={onGenerateNotice}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gold-500 hover:bg-gold-400 text-midnight font-semibold text-sm transition-all cursor-pointer shadow-lg shadow-gold-500/20"
             >
-              Generate Legal Notice
+              {t("rx.generateNotice")}
             </button>
           )}
           {onDownloadPdf && (
@@ -476,7 +487,7 @@ export default function AnalysisResultView({
               onClick={onDownloadPdf}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-ivory/70 hover:text-ivory font-semibold text-sm transition-all cursor-pointer"
             >
-              Download Report (PDF)
+              {t("rx.downloadReport")}
             </button>
           )}
           {onShare && (
@@ -491,7 +502,7 @@ export default function AnalysisResultView({
                 <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
                 <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
               </svg>
-              Share
+              {t("rx.share")}
             </button>
           )}
           {onPrint && (
@@ -499,7 +510,7 @@ export default function AnalysisResultView({
               onClick={onPrint}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-ivory/70 hover:text-ivory font-semibold text-sm transition-all cursor-pointer"
             >
-              Print
+              {t("rx.print")}
             </button>
           )}
         </div>
