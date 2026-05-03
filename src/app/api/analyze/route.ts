@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeLegalCase } from "@/lib/gemini";
-import type { ApiResponse, LegalAnalysis } from "@/lib/types";
+import type { LegalAnalysis } from "@/lib/types";
 import type { AnalysisResult, IndianState } from "@/types/legal";
 import { INDIAN_STATES } from "@/types/legal";
 import { toAnalysisResult } from "@/lib/toAnalysisResult";
@@ -8,21 +8,17 @@ import { toAnalysisResult } from "@/lib/toAnalysisResult";
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-type ExtendedSuccess = {
-  success: true;
-  data: LegalAnalysis;
-  analysis: AnalysisResult;
-};
-type ExtendedFailure = {
+type ApiSuccess = { success: true; data: LegalAnalysis; analysis: AnalysisResult };
+type ApiFailure = {
   success: false;
   error: string;
   errorKind?: "network" | "timeout" | "validation" | "rate_limit" | "generic";
 };
-type ExtendedResponse = ExtendedSuccess | ExtendedFailure;
+type AnalyzeResponse = ApiSuccess | ApiFailure;
 
 function toSafeMessage(message: string): {
   text: string;
-  kind: ExtendedFailure["errorKind"];
+  kind: ApiFailure["errorKind"];
 } {
   if (message.includes("GROQ_API_KEY is not configured")) {
     return {
@@ -63,7 +59,7 @@ function toSafeMessage(message: string): {
   };
 }
 
-export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse | ExtendedResponse>> {
+export async function POST(req: NextRequest): Promise<NextResponse<AnalyzeResponse>> {
   const start = Date.now();
   try {
     const body = await req.json();
@@ -76,17 +72,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse |
         ? (jurisdictionRaw as IndianState)
         : "Other";
 
-    if (!input || typeof input !== "string" || input.trim().length === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Please describe your legal situation in at least 30 characters.",
-          errorKind: "validation",
-        },
-        { status: 400 }
-      );
-    }
-    if (input.trim().length < 30) {
+    if (!input || typeof input !== "string" || input.trim().length < 30) {
       return NextResponse.json(
         {
           success: false,

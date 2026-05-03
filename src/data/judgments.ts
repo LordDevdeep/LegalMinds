@@ -142,6 +142,3 @@ export const JUDGMENTS: LandmarkJudgment[] = [
   },
 ];
 
-export function getJudgment(id: string): LandmarkJudgment | undefined {
-  return JUDGMENTS.find((j) => j.id === id);
-}

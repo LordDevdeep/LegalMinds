@@ -537,11 +537,6 @@ export function statutesForDomain(domain: string): StatuteSection[] {
   return STATUTE_DATABASE.filter((s) => s.domain === domain);
 }
 
-export function statutesById(ids: string[]): StatuteSection[] {
-  const set = new Set(ids);
-  return STATUTE_DATABASE.filter((s) => set.has(s.id));
-}
-
 export function searchStatutes(query: string): StatuteSection[] {
   const q = query.toLowerCase().trim();
   if (!q) return STATUTE_DATABASE;
