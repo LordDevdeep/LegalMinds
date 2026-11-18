@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
@@ -11,8 +10,6 @@ export default function AuthButton() {
   const [user, setUser] = useState<User | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
     const supabase = createClient();
@@ -44,14 +41,7 @@ export default function AuthButton() {
   }
 
   if (!user) {
-    return (
-      <Link
-        href={`/auth/login?redirect=${encodeURIComponent(pathname)}`}
-        className="px-4 py-1.5 rounded-lg bg-gold-500/15 border border-gold-500/25 text-xs text-gold-400 font-semibold hover:bg-gold-500/25 transition-all duration-200"
-      >
-        Login
-      </Link>
-    );
+    return null;
   }
 
   const displayName = user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "User";
