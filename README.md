@@ -101,7 +101,7 @@ You can add unlimited Groq keys (`GROQ_API_KEY_1`, `_2`, `_3`, …). The app rot
 
 ### 3. Set up Supabase tables
 Open the Supabase SQL Editor and run [`src/lib/supabase/schema.sql`](src/lib/supabase/schema.sql). It creates three tables with RLS policies:
-- `profiles` — user display names (auto-populated on signup)
+- `profiles` — user display names (auto-populated for authenticated users)
 - `analyses` — per-user analysis history
 - `shared_analyses` — public table for cross-device shareable links
 
@@ -133,7 +133,7 @@ npm start
 | `/judgments` | Landmark Supreme Court cases |
 | `/share/[id]` | Read-only public view of a shared analysis |
 | `/dashboard` | User's saved analyses (auth required) |
-| `/auth/login` · `/auth/signup` | Authentication |
+| `/auth/login` | Authentication |
 | `/terms` · `/privacy` | Legal pages |
 
 ### API
@@ -160,7 +160,7 @@ legalminds/
 │   │   ├── judgments/             # Landmark cases
 │   │   ├── share/[id]/            # Cross-device share viewer
 │   │   ├── dashboard/             # User history
-│   │   ├── auth/                  # Login / signup / callback
+│   │   ├── auth/                  # Login / callback
 │   │   └── api/                   # /analyze, /generate-notice, /suggest-compensation, /shared-analysis, /history
 │   ├── components/                # React components
 │   │   ├── AnalysisResult.tsx     # Main result renderer (cards)

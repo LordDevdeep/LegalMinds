@@ -3,7 +3,7 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -15,7 +15,6 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/analyzer";
 
@@ -95,12 +94,6 @@ function LoginForm() {
             </button>
           </form>
 
-          <p className="mt-4 text-xs text-ivory/30 text-center">
-            Don&apos;t have an account?{" "}
-            <Link href={`/auth/signup?redirect=${encodeURIComponent(redirect)}`} className="text-gold-400 hover:underline">
-              Sign up
-            </Link>
-          </p>
         </div>
       </div>
     </div>
